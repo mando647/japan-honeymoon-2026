@@ -321,7 +321,7 @@ async function loadAllData() {
   ]);
   if (accom.data) accom.data.forEach(r => { _accomPicks[r.day] = r.rank; });
   if (bookings.data) bookings.data.forEach(r => {
-    _bookingData[r.id] = { done: r.done, actual: r.actual, notes: r.notes };
+    _bookingData[r.id] = { done: r.done, actual: r.actual, notes: r.notes, conf: r.conf, checkinTime: r.checkin_time, checkoutTime: r.checkout_time };
   });
   if (checklist.data) checklist.data.forEach(r => { _checklistData[r.id] = r.checked; });
 }
@@ -335,7 +335,7 @@ function setupRealtime() {
       renderSidebar(); updateHeaderStats();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, (payload) => {
-      if (payload.new) _bookingData[payload.new.id] = { done: payload.new.done, actual: payload.new.actual, notes: payload.new.notes };
+      if (payload.new) _bookingData[payload.new.id] = { done: payload.new.done, actual: payload.new.actual, notes: payload.new.notes, conf: payload.new.conf, checkinTime: payload.new.checkin_time, checkoutTime: payload.new.checkout_time };
       if (payload.old && payload.eventType === 'DELETE') delete _bookingData[payload.old.id];
       renderBookings();
     })
@@ -904,7 +904,8 @@ function saveField(id, field, value) {
   } else {
     _bookingData[id][field] = value;
   }
-  const row = { id, done: _bookingData[id].done || false, actual: _bookingData[id].actual || null, notes: _bookingData[id].notes || null, updated_at: new Date().toISOString() };
+  const d = _bookingData[id];
+  const row = { id, done: d.done || false, actual: d.actual || null, notes: d.notes || null, conf: d.conf || null, checkin_time: d.checkinTime || null, checkout_time: d.checkoutTime || null, updated_at: new Date().toISOString() };
   sb.from('bookings').upsert(row).then();
   refreshProgress();
 }
