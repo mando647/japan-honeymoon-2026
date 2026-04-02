@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Japan Honeymoon 2026 — Mando & Rim</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --card: #334155; --card-hover: #3b4d66;
+    --border: #475569; --text: #f1f5f9; --muted: #94a3b8; --accent: #f59e0b;
+    --beach: #38bdf8; --mountain: #4ade80; --city: #c084fc; --ryokan: #fbbf24;
+    --cultural: #fb923c; --travel: #94a3b8; --scenic: #2dd4bf;
+    --sidebar-w: 400px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; gap: 20px; flex-shrink: 0; z-index: 1000;
+  }
+  header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
+  header h1 span { color: var(--accent); }
+  .header-stats { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
+  .header-stats .stat { display: flex; align-items: center; gap: 4px; }
+  .header-actions { display: flex; gap: 8px; }
+  .header-actions button {
+    padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--text); cursor: pointer; font-size: 12px;
+    transition: all 0.2s;
+  }
+  .header-actions button:hover { background: var(--card-hover); }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  #sidebar {
+    width: var(--sidebar-w); background: var(--surface); overflow-y: auto;
+    border-right: 1px solid var(--border); flex-shrink: 0; scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  #sidebar::-webkit-scrollbar { width: 6px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .day-card {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .day-card:hover { background: var(--card); }
+  .day-card.active { background: var(--card); border-left: 3px solid var(--accent); }
+  .day-card-header { display: flex; align-items: center; gap: 10px; }
+  .day-num {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+  .day-info { flex: 1; min-width: 0; }
+  .day-date { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .day-title { font-size: 14px; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .type-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+    text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+  }
+  .day-driving { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+  .day-detail {
+    max-height: 0; overflow: hidden; transition: max-height 0.4s ease;
+  }
+  .day-card.active .day-detail { max-height: 2000px; }
+  .day-detail-inner { padding: 12px 0 4px; }
+
+  .detail-image {
+    width: 100%; height: 180px; border-radius: 8px; overflow: hidden;
+    background: var(--bg); position: relative; margin-bottom: 12px;
+  }
+  .detail-image img {
+    width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s;
+  }
+  .detail-image .img-placeholder {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--muted); position: absolute; top: 0; left: 0;
+  }
+
+  .detail-section { margin-bottom: 12px; }
+  .detail-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .detail-section ul { list-style: none; padding: 0; }
+  .detail-section li {
+    font-size: 13px; padding: 3px 0; padding-left: 16px; position: relative; line-height: 1.5;
+  }
+  .detail-section li::before {
+    content: ''; position: absolute; left: 0; top: 10px; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--accent);
+  }
+  .detail-section.food li::before { background: var(--cultural); }
+  .detail-section.photo li::before { background: var(--city); }
+
+  .detail-accommodation {
+    background: var(--bg); border-radius: 8px; padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+  }
+  .detail-accommodation .name { font-size: 13px; font-weight: 500; }
+  .detail-accommodation .price { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .detail-accommodation .accom-type { font-size: 11px; color: var(--muted); }
+
+  .accom-options-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .accom-option {
+    background: var(--bg); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    border: 1px solid var(--border); transition: all 0.2s; position: relative;
+  }
+  .accom-option.recommended { border-color: var(--accent); }
+  .accom-option .ao-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .accom-option .ao-rank {
+    width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+    background: var(--card); color: var(--muted);
+  }
+  .accom-option.recommended .ao-rank { background: var(--accent); color: #000; }
+  .accom-option .ao-name { font-size: 13px; font-weight: 600; flex: 1; }
+  .accom-option .ao-price { font-size: 14px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .accom-option .ao-price-jpy { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .accom-option .ao-details { font-size: 11px; color: var(--muted); line-height: 1.6; padding-left: 30px; }
+  .accom-option .ao-details .ao-row { display: flex; align-items: flex-start; gap: 6px; }
+  .accom-option .ao-details .ao-icon { flex-shrink: 0; width: 14px; text-align: center; }
+  .accom-option .ao-details .ao-highlight { color: var(--text); font-weight: 500; }
+  .accom-option { cursor: pointer; transition: all 0.2s; }
+  .accom-option:hover { border-color: var(--muted); }
+  .accom-option.selected { border-color: var(--mountain); background: rgba(74,222,128,0.06); }
+  .accom-option.recommended.selected { border-color: var(--accent); background: rgba(245,158,11,0.06); }
+  .ao-actions { display: flex; gap: 6px; padding-left: 30px; margin-top: 8px; }
+  .ao-btn-select {
+    padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .ao-btn-select:hover { border-color: var(--mountain); color: var(--mountain); }
+  .ao-btn-select.active { background: var(--mountain); color: #000; border-color: var(--mountain); }
+  .ao-btn-book {
+    padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    cursor: pointer; text-decoration: none; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .ao-btn-book:hover { border-color: var(--accent); color: var(--accent); }
+  .booking-book-link {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    border-radius: 6px; font-size: 11px; font-weight: 500; text-decoration: none;
+    background: var(--bg); color: var(--accent); border: 1px solid var(--accent);
+    transition: all 0.2s; margin-left: 8px;
+  }
+  .booking-book-link:hover { background: var(--accent); color: #000; }
+
+  .detail-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .detail-links a {
+    padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    text-decoration: none; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+  }
+  .detail-links a:hover { background: var(--card-hover); border-color: var(--accent); }
+
+  #map { flex: 1; z-index: 1; }
+  .leaflet-container { background: var(--bg); }
+
+  .custom-marker {
+    width: 28px; height: 28px; border-radius: 50%; border: 3px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
+  }
+  .custom-marker:hover { transform: scale(1.2); }
+  .custom-marker.active { transform: scale(1.3); box-shadow: 0 0 0 4px rgba(245,158,11,0.4); }
+
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    z-index: 2000; display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 16px; padding: 32px; max-width: 700px;
+    width: 90%; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border);
+  }
+  .modal h2 { font-size: 20px; margin-bottom: 20px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 20px; background: none; border: none;
+    color: var(--text); font-size: 24px; cursor: pointer;
+  }
+  .budget-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .budget-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .budget-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .budget-table .total td { font-weight: 700; border-top: 2px solid var(--accent); color: var(--accent); font-size: 15px; }
+  .budget-bar { height: 8px; border-radius: 4px; background: var(--bg); margin-top: 4px; overflow: hidden; }
+  .budget-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+  .checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .checklist-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; }
+  .checklist-item label { font-size: 13px; line-height: 1.5; cursor: pointer; }
+  .checklist-item.checked label { text-decoration: line-through; color: var(--muted); }
+  .checklist-section { margin-bottom: 20px; }
+  .checklist-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+
+  /* Bookings Tracker */
+  .booking-progress { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .booking-progress-bar { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 10px 0; }
+  .booking-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--mountain)); border-radius: 5px; transition: width 0.5s; }
+  .booking-progress-stats { display: flex; gap: 24px; font-size: 13px; flex-wrap: wrap; }
+  .booking-progress-stats .bp-stat { display: flex; flex-direction: column; gap: 2px; }
+  .booking-progress-stats .bp-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .booking-progress-stats .bp-value { font-weight: 700; font-size: 16px; }
+  .booking-progress-stats .bp-value.accent { color: var(--accent); }
+
+  .booking-group { margin-bottom: 24px; }
+  .booking-group-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .booking-group-title .priority {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+  }
+  .priority-now { background: #ef444433; color: #f87171; }
+  .priority-soon { background: #f59e0b33; color: #fbbf24; }
+  .priority-later { background: #22c55e33; color: #4ade80; }
+
+  .booking-item {
+    background: var(--card); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+    border-left: 3px solid var(--border); transition: all 0.2s;
+  }
+  .booking-item.done { border-left-color: var(--mountain); opacity: 0.8; }
+  .booking-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .booking-item-header input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--mountain); cursor: pointer; flex-shrink: 0; }
+  .booking-item-header .bi-text { flex: 1; font-size: 14px; font-weight: 500; }
+  .booking-item-header .bi-est { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .booking-item.done .bi-text { text-decoration: line-through; color: var(--muted); }
+  .booking-item-details { font-size: 12px; color: var(--muted); margin-bottom: 8px; padding-left: 28px; }
+  .booking-inputs { display: flex; gap: 8px; padding-left: 28px; flex-wrap: wrap; }
+  .booking-inputs .bi-field { display: flex; flex-direction: column; gap: 3px; }
+  .booking-inputs .bi-field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .booking-inputs .bi-field input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; color: var(--text); font-size: 13px; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .booking-inputs .bi-field input:focus { outline: none; border-color: var(--accent); }
+  .booking-inputs .bi-field input.price-input { width: 110px; }
+  .booking-inputs .bi-field input.conf-input { width: 160px; }
+  .booking-inputs .bi-field input.notes-input { width: 220px; }
+
+  .modal-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+  .modal-tabs button {
+    padding: 10px 20px; border: none; background: none; color: var(--muted);
+    font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s;
+  }
+  .modal-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .main { flex-direction: column; }
+    #sidebar { width: 100%; height: 45vh; border-right: none; border-bottom: 1px solid var(--border); }
+    #map { height: 55vh; }
+    .header-stats { display: none; }
+    header { padding: 10px 16px; gap: 10px; }
+    .modal { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Japan <span>2026</span></h1>
+    <div class="header-stats" id="headerStats"></div>
+    <div class="header-actions" style="margin-left:auto">
+      <button onclick="showModal('budget')">Budget</button>
+      <button onclick="showModal('bookings')">Bookings</button>
+      <button onclick="showModal('checklist')">Packing</button>
+    </div>
+  </header>
+  <div class="main">
+    <div id="sidebar"></div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-budget" onclick="if(event.target===this)closeModals()">
+  <div class="modal" id="budgetContent"></div>
+</div>
+<div class="modal-overlay" id="modal-bookings" onclick="if(event.target===this)closeModals()">
+  <div class="modal" id="bookingsContent" style="max-width:800px"></div>
+</div>
+<div class="modal-overlay" id="modal-checklist" onclick="if(event.target===this)closeModals()">
+  <div class="modal" id="checklistContent"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// --- Supabase setup ---
+const SUPABASE_URL = 'https://drfytajbstwiookwbxsv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_YCpu9qa6RJoxiWvRyEoOnA_N1Ckydfx';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// In-memory caches (replaces localStorage)
+let _accomPicks = {};
+let _bookingData = {};
+let _checklistData = {};
+
+async function loadAllData() {
+  const [accom, bookings, checklist] = await Promise.all([
+    sb.from('accom_picks').select('*'),
+    sb.from('bookings').select('*'),
+    sb.from('checklist').select('*'),
+  ]);
+  if (accom.data) accom.data.forEach(r => { _accomPicks[r.day] = r.rank; });
+  if (bookings.data) bookings.data.forEach(r => {
+    _bookingData[r.id] = { done: r.done, actual: r.actual, notes: r.notes };
+  });
+  if (checklist.data) checklist.data.forEach(r => { _checklistData[r.id] = r.checked; });
+}
+
+// Realtime subscriptions for cross-device sync
+function setupRealtime() {
+  sb.channel('sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'accom_picks' }, (payload) => {
+      if (payload.new) _accomPicks[payload.new.day] = payload.new.rank;
+      if (payload.old && payload.eventType === 'DELETE') delete _accomPicks[payload.old.day];
+      renderSidebar(); updateHeaderStats();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, (payload) => {
+      if (payload.new) _bookingData[payload.new.id] = { done: payload.new.done, actual: payload.new.actual, notes: payload.new.notes };
+      if (payload.old && payload.eventType === 'DELETE') delete _bookingData[payload.old.id];
+      renderBookings();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist' }, (payload) => {
+      if (payload.new) _checklistData[payload.new.id] = payload.new.checked;
+      if (payload.old && payload.eventType === 'DELETE') delete _checklistData[payload.old.id];
+      renderChecklist();
+    })
+    .subscribe();
+}
+
+const TYPE_COLORS = { beach:'#38bdf8', mountain:'#4ade80', city:'#c084fc', ryokan:'#fbbf24', cultural:'#fb923c', travel:'#94a3b8', scenic:'#2dd4bf' };
+
+const OPTION_A = [
+  {
+    day:1, date:'Tue, Aug 5', title:'Arrive in Tokyo', subtitle:'Shinjuku + Shibuya Night', coords:[35.689,139.700], type:'city',
+    driving:'Train from Narita (no car yet — saves a day of rental)', temp:'32\u00B0C',
+    accom:{ name:'APA Hotel Kabukicho Tower', price:115, type:'Budget hotel — rooftop onsen, Kabukicho center' },
+    activities:['Land at Narita ~5-6PM via Turkish Airlines from Istanbul','Airport Limousine Bus direct to Shinjuku hotel (~2h, ~3,200 yen/person) — hand bags to driver, sit back, zero hassle with luggage','Check into hotel, freshen up, change into walking clothes','Omoide Yokocho (Memory Lane) — tiny yakitori joints under the tracks, smoke, red lanterns','Walk through Kabukicho — Tokyo\'s neon canyon, unmatched sign density','If energy permits: Shibuya Crossing at night + Shibuya Sky rooftop for aerial city view'],
+    food:['Omoide Yokocho yakitori — try Motsu-yaki Ucchan for grilled organ meats (signature Negi Liver)','Late-night ramen at Fuunji (Shinjuku) — legendary tsukemen, expect a short queue','Konbini midnight snack run — you\'ll be jet-lagged anyway, embrace it'],
+    photo:['Omoide Yokocho at blue hour — THE best night photography spot in Japan (XF 35mm f/1.4 wide open, ISO 3200-6400, WB ~3,500K)','Kabukicho neon layers — shoot looking up, 20-30min after sunset for deep blue sky','Shibuya Crossing from Shibuya Sky — aerial long-exposure light trails','Set Classic Negative film sim for moody warm tones'],
+    wiki:'Shinjuku'
+  },
+  {
+    day:2, date:'Wed, Aug 6', title:'Tsukiji Morning + Drive to Izu', subtitle:'Tokyo Sushi → Shimoda Beach', coords:[34.672,138.945], type:'beach',
+    driving:'3h from Shinjuku (pick up car ~1PM)', temp:'31\u00B0C',
+    accom:{ name:'Shimoda Prince Hotel', price:110, type:'Free parking, ocean views, onsen' },
+    activities:['Morning: Tsukiji Outer Market — sushi breakfast at the source (arrive by 8AM)','Try 2-3 spots: Sushi Tomi (tuna specialist), Tsukiji Itadori Bekkan (order individual pieces)','Optional: Senso-ji in Asakusa (15 min by subway, nearly empty before 9AM, warm light on pagoda)','~1PM: Pick up rental car from Times Car Rental Shinjuku branch','Drive south to Shimoda, Izu Peninsula (~3h via Tomei Expressway)','Arrive ~4-5PM — sunset walk at Shirahama Ohama Beach (800m white sand)','Seafood dinner in Shimoda port area'],
+    food:['Tsukiji sushi breakfast — budget ~2,000-3,000 yen for incredible quality','Uni comparison at Unitora Iori — taste sea urchin from different regions of Japan','Shimoda dinner: Kinmedai (golden eye snapper) — the local signature, simmered or grilled','Shimoda Burger at Ra-maru — crispy kinmedai with camembert cheese'],
+    photo:['Tsukiji Outer Market — vendors, fish displays, knives, steam, morning light streaming through','Senso-ji at dawn — pagoda in warm golden light, nearly empty (35mm wide angle)','Shimoda Bay harbor at golden hour on arrival','Shirahama Beach sunset — white sand glowing'],
+    wiki:'Tsukiji'
+  },
+  {
+    day:3, date:'Thu, Aug 7', title:'Izu Beach + Snorkeling', subtitle:'Hirizo Beach + Ryokan', coords:[34.632,138.888], type:'beach',
+    driving:'30min around peninsula', temp:'30C',
+    accom:{ name:'Bousui Ryokan (\u671B\u6C34)', price:500, type:'Ryokan \u2014 Private in-room onsen, ocean view, kaiseki' },
+    activities:['Morning boat to Hirizo Beach — crystal-clear snorkeling (1,500 yen/person shuttle)','Arrive early (8:30AM opening), bring everything — no facilities on beach','Afternoon relax at Kisami Ohama Beach (less crowded)','Evening: full ryokan experience — yukata, private onsen, kaiseki dinner'],
+    food:['Ryokan kaiseki dinner included — multi-course seasonal feast','Try amago (river fish) if on the menu','Wasabi ice cream for dessert'],
+    photo:['Hirizo Beach underwater snorkeling shots','Jogasaki Coast volcanic cliffs + suspension bridge','Ryokan room and kaiseki spread — X-H2S food photography'],
+    wiki:'Izu_Peninsula'
+  },
+  {
+    day:4, date:'Fri, Aug 8', title:'Izu Skyline + Mt Fuji', subtitle:'Coastal Drive to Fuji Five Lakes', coords:[35.511,138.763], type:'scenic',
+    driving:'2.5h Izu to Kawaguchiko', temp:'29C (lake elevation)',
+    accom:{ name:'Kawaguchiko Station Inn', price:100, type:'Free parking, hot spring with Fuji view' },
+    activities:['Morning drive on Izu Skyline — toll road along the ridge, Suruga Bay + Fuji views','Stop at Jogasaki Coast if not visited yesterday','Drive to Fuji Five Lakes (Kawaguchiko) via Route 136','Afternoon explore lakeside — rent bikes, walk along shore','Evening: try to spot Fuji at sunset (low odds in August)'],
+    food:['Yoshida Udon at Tsuruya Shokudo — thick chewy noodles, miso-shoyu broth, horsemeat','Hoto stew — wide flat noodles with pumpkin in miso broth (Yamanashi specialty)','Try suridane (ground sesame + chili) condiment with udon'],
+    photo:['Izu Skyline panoramic ridge views','Chureito Pagoda with Mt Fuji (best at 4:30AM dawn if you can wake up!)','Lake Kawaguchiko reflection of Fuji at sunset/dawn','Oshino Hakkai crystal-clear spring ponds with Fuji backdrop'],
+    wiki:'Lake_Kawaguchi'
+  },
+  {
+    day:5, date:'Sat, Aug 9', title:'Mt Fuji Dawn + Venus Line', subtitle:'Highland Drive to Matsumoto', coords:[36.238,137.972], type:'mountain',
+    driving:'4h scenic via Venus Line', temp:'25C (highland)',
+    accom:{ name:'Dormy Inn Matsumoto', price:95, type:'Hot spring, free late-night ramen' },
+    activities:['4:30AM wake up for Mt Fuji photos (only clear window in August)','Drive Panorama-dai viewpoint or Lake Kawaguchiko north shore','Mid-morning: head north on Venus Line — Japan\'s best highland drive','1,500-1,900m elevation, wildflower meadows, dramatically cooler air','Arrive Matsumoto late afternoon','Evening stroll around Matsumoto Castle'],
+    food:['Shinshu Soba at Kobayashi (est. 1889) — handmade buckwheat noodles for 130+ years','Basashi (raw horse meat) — Nagano specialty, don\'t knock it','Oyaki — stuffed and grilled dumplings, mountain comfort food'],
+    photo:['Mt Fuji at dawn from Panorama-dai (use 85mm+ for compression)','Venus Line meadows with wildflowers at 1,800m','Matsumoto Castle at dusk — black castle reflected in moat, golden hour magic'],
+    wiki:'Matsumoto_Castle'
+  },
+  {
+    day:6, date:'Sun, Aug 10', title:'Matsumoto + Kamikochi', subtitle:'Alpine Valley Day Trip', coords:[36.248,137.635], type:'mountain',
+    driving:'1h to Sawando + shuttle', temp:'22C (Kamikochi)',
+    accom:{ name:'Dormy Inn Matsumoto', price:95, type:'Same hotel, night 2 of 2', linkedDay:5 },
+    activities:['Morning: Matsumoto Castle (one of Japan\'s 5 original castles)','Drive to Sawando parking (1h), shuttle bus into Kamikochi','Kamikochi: spectacular alpine valley at 1,500m, 20-22C in August','Hike to Kappa Bridge, Taisho Pond, Myojin Pond (2-4h gentle walk)','Private cars banned — bus/taxi only past Sawando'],
+    food:['Mountain lodge lunch in Kamikochi — river fish (iwana char), sansai tempura','Soba for dinner back in Matsumoto — try Miyota for the Special Course','Sanzoku-yaki (garlic fried chicken) at a local izakaya'],
+    photo:['Kappa Bridge with Hotaka peaks behind — iconic Japanese Alps shot','Taisho Pond dead trees with mountain reflections','Alpine wildflowers and river scenes','Morning mist in the valley if you arrive early'],
+    wiki:'Kamikochi'
+  },
+  {
+    day:7, date:'Mon, Aug 11', title:'Okuhida Onsen + Takayama', subtitle:'Mountain Day Holiday', coords:[36.146,137.252], type:'cultural',
+    driving:'2h via Route 158', temp:'28C',
+    accom:{ name:'Honjin Hiranoya Bekkan', price:415, type:'Ryokan \u2014 Old town riverside, Hida beef kaiseki, free parking' },
+    activities:['Drive Route 158 through mountain scenery to Okuhida','Stop at Shin-Hotaka no Yu — free outdoor onsen with Alps views','Continue to Takayama (30min more)','Explore Sanmachi Suji — Edo-period preserved merchant streets','Sake tasting: 7 breweries in old town, most with free tastings','Try Hirase (oldest, ~400 years) and Funasaka (modern sake bar)','Evening: full ryokan experience at Oyado Koto No Yume'],
+    food:['Hida Beef street skewers (~500-800 yen) — rival Kobe beef','Hida beef sushi on rice crackers (~1,000 yen)','Hoba miso — miso grilled on magnolia leaf over charcoal','Sit-down dinner at Suzuya for sukiyaki or shabu-shabu (or ryokan kaiseki)'],
+    photo:['Takayama old town in morning light — warm wood tones on Edo streets','Sake brewery sugidama (cedar ball ornaments)','Night shots of lantern-lit empty streets — moody and atmospheric','Food photography: Hida beef close-ups, X-H2S at f/1.4'],
+    wiki:'Takayama,_Gifu'
+  },
+  {
+    day:8, date:'Tue, Aug 12', title:'Shirakawa-go + Kanazawa', subtitle:'UNESCO Village + Sea of Japan', coords:[36.561,136.656], type:'cultural',
+    driving:'2.5h total (Takayama→Shirakawa→Kanazawa)', temp:'30C',
+    accom:{ name:'The Square Hotel Kanazawa', price:100, type:'On-site parking, between Omicho & Kenrokuen' },
+    activities:['Early morning: Takayama morning markets (Miyagawa + Jinya-mae, open till noon)','Buy Hida beef croquettes, gohei mochi, local pickles','Drive to Shirakawa-go (~50min) — UNESCO thatched farmhouses','Climb to Shiroyama Viewpoint for classic overhead village photo','Optional: nearby Gokayama (smaller, less touristy)','Afternoon: drive to Kanazawa (~1.5h)','Evening: Omicho Market for dinner'],
+    food:['Takayama morning market street food for breakfast','Morimori Sushi at Omicho — conveyor belt sushi, possibly Japan\'s best kaiten-zushi','Kanazawa\'s Sea of Japan sushi rivals Tokyo quality','Gold leaf ice cream — whole sheet of gold on soft-serve (~800 yen)'],
+    photo:['Shirakawa-go from Shiroyama Viewpoint — the classic shot','Gokayama villages — smaller, more intimate','Omicho Market seafood displays and bustle','Gold leaf ice cream — very photogenic'],
+    wiki:'Shirakawa-go'  // Note: using ascii version
+  },
+  {
+    day:9, date:'Wed, Aug 13', title:'Kanazawa Day', subtitle:'Obon Begins — Stay Put', coords:[36.561,136.656], type:'city',
+    driving:'Walking day (avoid highways during Obon)', temp:'31C',
+    accom:{ name:'The Square Hotel Kanazawa', price:100, type:'Same hotel, night 2 of 2', linkedDay:8 },
+    activities:['4:00-6:45AM: Kenrokuen Garden FREE early entry — no ticket needed!','Morning mist over Kasumigaike Pond — spectacular photography','Walk to Omicho Market for seafood breakfast','Higashi Chaya geisha district — wooden lattice buildings, sake bars','21st Century Museum of Contemporary Art (free outdoor exhibits)','D.T. Suzuki Museum — minimalist zen architecture','Evening: Higashi Chaya at night — glowing lattice buildings, very romantic'],
+    food:['Omicho Market seafood breakfast — fresh uni, sashimi, crab','Jibuni — Kanazawa\'s signature duck stew with wheat gluten','More gold leaf treats — gold leaf coffee, gold leaf sake'],
+    photo:['Kenrokuen at 4-5AM — morning mist, pond reflections, zero crowds','Higashi Chaya at night — warm glow through wooden lattice','21st Century Museum circular architecture','Omicho Market vendor portraits and seafood displays'],
+    wiki:'Kenroku-en'
+  },
+  {
+    day:10, date:'Thu, Aug 14', title:'Chirihama Beach + Noto', subtitle:'Drive ON the Beach', coords:[36.650,136.700], type:'beach',
+    driving:'1h from Kanazawa', temp:'29C',
+    accom:{ name:'Chirihama Hotel Yubana', price:220, type:'Onsen ryokan \u2014 Noto seafood dinner+breakfast included' },
+    activities:['Drive to Chirihama Nagisa Driveway — 8km of beach you drive ON (unique in Japan!)','Beach time for Rim — Sea of Japan water ~24-25C','Explore Noto Peninsula coast (check conditions — 2024 earthquake recovery)','Optional big detour: Gujo Hachiman for Gujo Odori all-night dancing Aug 13-16','Gujo Odori: UNESCO heritage, 400+ year tradition, anyone can join the dance circle','Evening: bon odori at a local temple — it\'s Obon, lanterns and dances everywhere'],
+    food:['Noto seafood — local fish markets along the coast','Konbini road trip lunch (embrace it)','Evening: izakaya in Kanazawa or Noto town'],
+    photo:['Your car on Chirihama beach — sunset is incredible here','Noto Peninsula coastal cliffs and fishing villages','Obon lanterns and bon odori dancing if you catch a festival','Gujo Odori all-night dance circle (if you make the detour)'],
+    wiki:'Chirihama_Beach'
+  },
+  {
+    day:11, date:'Fri, Aug 15', title:'Kanazawa to Karuizawa', subtitle:'Highland Retreat', coords:[36.349,138.597], type:'mountain',
+    driving:'4-5h via Joetsu/Nagano', temp:'26C (highland)',
+    accom:{ name:'Comfort Inn Karuizawa', price:110, type:'Free parking, forest setting' },
+    activities:['Morning: any Kanazawa spots missed, last Omicho Market run','Drive east to Karuizawa via Nagano (4-5h, some Obon traffic)','Karuizawa: highland resort town, 25C in August vs 35C in Tokyo','Tree-lined streets, European feel, pleasant walking','Evening: stroll Old Karuizawa, outlet shopping if interested','Stargazing opportunity — Aug 12 was New Moon, dark skies all week'],
+    food:['Karuizawa has upscale cafes and bakeries','Try Nagano apples and local fruit','Shinshu beef (another Nagano wagyu variety)'],
+    photo:['Tree-lined Karuizawa avenues — dappled light, cycling couples','Mountain backdrop from town','Stars — New Moon period, dark skies at elevation'],
+    wiki:'Karuizawa'
+  },
+  {
+    day:12, date:'Sat, Aug 16', title:'Karuizawa to Hakone', subtitle:'Final Ryokan Splurge', coords:[35.232,139.107], type:'ryokan',
+    driving:'3h south', temp:'30C (lower elevation)',
+    accom:{ name:'Hakone Ginyu', price:680, type:'Ryokan \u2014 Private bath + in-room kaiseki, #2 in Hakone' },
+    activities:['Morning: enjoy Karuizawa\'s cool mountain air one last time','Drive south to Hakone (3h)','Owakudani volcanic valley — steam vents, sulfur smell, eat a black egg','Black eggs steamed in volcanic springs — said to add 7 years to your life','Arrive ryokan: change to yukata, soak in private onsen, relax','Evening: multi-course kaiseki dinner — the grand finale meal','Late night: one more onsen under the stars'],
+    food:['Ryokan kaiseki dinner — seasonal multi-course masterpiece, included in stay','Black eggs at Owakudani (~500 yen for 5)','Hakone yuba (silky soymilk skin)'],
+    photo:['Owakudani volcanic steam and sulfur landscape','Lake Ashi views','Ryokan room, kaiseki spread, onsen details','Hakone Shrine torii gate on the lake'],
+    wiki:'Hakone'
+  },
+  {
+    day:13, date:'Sun, Aug 17', title:'Hakone to Narita', subtitle:'Last Day in Japan', coords:[35.772,140.393], type:'travel',
+    driving:'2.5h to Narita', temp:'33C',
+    accom:{ name:'Narita Tobu Hotel Airport', price:90, type:'Pool, sauna, garden, free shuttle 5AM-11PM' },
+    activities:['Morning: one last onsen soak at the ryokan','Hakone Shrine — torii gate rising from Lake Ashi, stunning','Optional: Lake Ashi cruise (30min)','Drive to Narita area (2.5h)','Return rental car at airport','Evening: last konbini and Don Quijote run for omiyage (souvenirs)','Royce chocolate, Kit Kat varieties, face masks, snacks'],
+    food:['Ryokan breakfast included','Last ramen near Narita — go out with a bowl','Konbini haul for the flight home'],
+    photo:['Hakone Shrine torii in the lake — early morning reflection','Lake Ashi with mountains behind','Last Japan sunset from Narita area'],
+    wiki:'Hakone_Shrine'
+  },
+  {
+    day:14, date:'Mon, Aug 18', title:'Fly Home', subtitle:'Tokyo to Toronto via Calgary', coords:[35.772,140.393], type:'travel',
+    driving:'None — already at airport', temp:'—',
+    accom:{ name:'Flight', price:0, type:'15h 45m via Calgary' },
+    activities:['Morning departure from Narita','15h 45m flight to Toronto via Calgary','Cross the dateline — arrive Toronto same day (Aug 18)','Start editing those X-H2S photos on the plane'],
+    food:['Airport ramen or sushi for one final meal','Plane food for 15 hours'],
+    photo:['Window seat for aerial views of Japan coastline at departure','Mt Fuji from the plane if the route passes over it'],
+    wiki:'Narita_International_Airport'
+  }
+];
+
+const ACCOM_OPTIONS = {
+  1: [
+    { rank:1, name:'APA Hotel Shinjuku Kabukicho Tower', price:115, priceJPY:'12,500', parking:'Not needed (no car yet)', location:'3-min walk to Omoide Yokocho, in Kabukicho', view:'City skyline from rooftop onsen (28F)', highlights:'Rooftop public onsen open late night, right in the neon heart of Kabukicho. 7.8 on Booking.com.', recommended:true, url:'https://www3.apahotel.com/hotel/syutoken/tokyo/shinjuku-kabukichotower/' },
+    { rank:2, name:'Kadoya Hotel', price:165, priceJPY:'25,080', parking:'Not needed', location:'6-min walk to Omoide Yokocho, near West Exit', view:'City view from upper floors', highlights:'Travelers\u2019 Choice award, spacious rooms, free laundry. Above budget but quieter side of Shinjuku.', url:'https://www.kadoya-hotel.co.jp/eng/' },
+    { rank:3, name:'Nishitetsu Inn Shinjuku', price:130, priceJPY:'14,300', parking:'Not needed', location:'5-min walk to Omoide Yokocho, near Camera Town', view:'City view', highlights:'Reliable chain, Travelers\u2019 Choice. Near Yodobashi Camera for last-minute gear.', url:'https://inn-shinjuku.nnr-h.com/' },
+  ],
+  2: [
+    { rank:1, name:'Shimoda Prince Hotel', price:110, priceJPY:'12,100', parking:'Free on-site', location:'15-min walk to Shirahama Beach (or short drive)', view:'Ocean / coastal views', highlights:'Indoor onsen hot spring, free parking, 8.2 on Expedia. Solid beach base.', recommended:true, url:'https://www.princehotels.com/shimoda/' },
+    { rank:2, name:'Shimoda Tokyu Hotel', price:175, priceJPY:'19,250', parking:'Free on-site', location:'900m to beach, free shuttle to station', view:'Panoramic bay views from hilltop', highlights:'#1 on TripAdvisor Shimoda. Outdoor pool (open Aug!), ocean-view restaurant. Above budget but resort-quality.', url:'https://www.tokyuhotels.co.jp/en/shimoda-h/index.html' },
+    { rank:3, name:'White Beach Hotel', price:75, priceJPY:'8,250', parking:'Free on-site', location:'Steps to Kisami Ohama Beach (not Shirahama, 10-min drive)', view:'Direct beach view', highlights:'Budget pick. Boutique surfer vibe, English-speaking owner, excellent on-site restaurant.', url:'https://www.whitebeach-shimoda.com/booking-engine' },
+  ],
+  3: [
+    { rank:1, name:'Bousui Ryokan (\u671B\u6C34)', price:500, priceJPY:'55,000', parking:'Free valet on-site', location:'Hokkawa Onsen town, East Izu coast', view:'Panoramic Pacific Ocean from every room', highlights:'Private in-room onsen, kaiseki dinner in-room, rooms 43-72 sqm. 4.4/5 on japanese-onsen.com. THE honeymoon pick.', recommended:true, url:'https://www.bousui.com/english/' },
+    { rank:2, name:'Mibunoshou', price:515, priceJPY:'56,650', parking:'Free on-site', location:'Higashiizu, East Izu coast', view:'Mountain, ocean, garden & forest views', highlights:'Only 8 rooms \u2014 ultra-intimate. Private open-air bath every room. 8.8 on Agoda. Mountain over ocean view is the tradeoff.', url:'https://mibunoshou.jp/' },
+    { rank:3, name:'Akazawa Onsen Hotel', price:300, priceJPY:'33,000', parking:'Free on-site', location:'Akazawa, Ito. Slightly north of Hokkawa', view:'Ocean views from hillside', highlights:'Budget ryokan option. Deluxe rooms (71 sqm) with private open-air bath. More \u201Cresort hotel\u201D than traditional ryokan. Dinner may be extra.', url:'https://www.izuakazawa.jp/stay/onsen-hotel/' },
+  ],
+  4: [
+    { rank:1, name:'Kawaguchiko Station Inn', price:100, priceJPY:'11,000', parking:'Free on-site', location:'1-min from station, 7-min walk to lake shore', view:'Mt Fuji from public hot bath (not from rooms)', highlights:'#1 pension in Fujikawaguchiko, 8.7 on Booking.com. Location 9.7/10. Walk to lake for 4:30AM Fuji shots.', recommended:true, url:'https://www.st-inn.com/en/' },
+    { rank:2, name:'Hotel Regina Kawaguchiko', price:150, priceJPY:'16,500', parking:'Free on-site', location:'South shore of lake, 20-min drive to Chureito Pagoda', view:'Mt Fuji from ALL rooms (across Aokigahara)', highlights:'Every room faces Fuji. Upper-floor balcony rooms = see dawn Fuji from bed. 8.7 on KAYAK. Above budget but best view.', url:'https://kawaguchiko.regina-resorts.com/en/' },
+    { rank:3, name:'Hotel Koryu', price:170, priceJPY:'18,700', parking:'Free on-site', location:'Lake Kawaguchiko shore, Asakawa area', view:'Lake views, partial Fuji', highlights:'Public onsen + rooms with private open-air bath over lake. 8.7 on Agoda (4,414 reviews). Book on official site, not Agoda.', url:'https://hotel-koryu.jp/en/' },
+  ],
+  5: [
+    { rank:1, name:'Dormy Inn Matsumoto', price:95, priceJPY:'10,450', parking:'Nearby coin lots \xA51,000-1,500/day (~CA$12)', location:'15-min walk to castle, 3-min to station', view:'City view', highlights:'Natural hot spring baths (outdoor + indoor), FREE late-night ramen. 8.7 on KAYAK. Best hot spring hotel in town.', recommended:true, url:'https://www.booking.com/hotel/jp/dormy-inn-matsumoto.html' },
+    { rank:2, name:'Ace Inn Matsumoto', price:95, priceJPY:'10,450', parking:'On-site ~\xA5500-1,000/night', location:'15-min walk to castle, near station', view:'City view', highlights:'Pure budget pick. 8.2 on Agoda (4,554 reviews). Clean, basic, reliable. No frills.', url:'https://www.booking.com/hotel/jp/ace-inn-matsumoto.html' },
+    { rank:3, name:'Matsumoto Marunouchi Hotel', price:165, priceJPY:'18,150', parking:'On-site \xA51,000-1,500/night', location:'Adjacent to castle grounds, 3-min walk', view:'Castle grounds & mountain views from some rooms', highlights:'Historic 1930s school building. #3 hotel in Matsumoto, 9.2 on Hotels.com. French restaurant. Above budget but unbeatable castle proximity.', url:'https://www.matsumoto-marunouchi.com/' },
+  ],
+  7: [
+    { rank:1, name:'Honjin Hiranoya Bekkan', price:415, priceJPY:'45,650', parking:'Free on-site + free station pickup', location:'Heart of old town, steps from Sanmachi Suji & Nakabashi Bridge', view:'Riverside rooms over Miyagawa River', highlights:'9.4 on Hotels.com. Kaiseki dinner with Hida beef INCLUDED. Free parking. Location is unbeatable \u2014 walk out into Edo streets.', recommended:true, url:'https://ssl.honjinhiranoya.co.jp/' },
+    { rank:2, name:'Oyado Koto No Yume', price:350, priceJPY:'38,500', parking:'No on-site parking (nearby municipal lot ~\xA5500-1,000/day, 5-min walk)', location:'2-min walk from station, 10-min to Sanmachi Suji', view:'Japanese garden courtyard', highlights:'#1 Best Value on TripAdvisor (735 reviews). Beautiful aesthetic. BUT base rate is B&B only \u2014 dinner adds CA$200+, pushing total to CA$600+.', url:'https://www.kotoyume.com/' },
+    { rank:3, name:'Hidatei Hanaougi', price:650, priceJPY:'71,500', parking:'Free on-site', location:'10-min walk to station, 15-min to Sanmachi Suji', view:'Japanese garden, nature views from outdoor onsen', highlights:'Some rooms have PRIVATE outdoor onsen. Hida beef kaiseki included. #2 ryokan in Takayama. Premium pick if private onsen is non-negotiable.', url:'https://www.hanaougi.co.jp/' },
+  ],
+  8: [
+    { rank:1, name:'The Square Hotel Kanazawa', price:100, priceJPY:'11,000', parking:'On-site \xA51,300/day (~CA$12)', location:'Between Omicho Market & Kenrokuen \u2014 ideal for 4AM garden walk', view:'City view', highlights:'9.2 on Trip.com. Best location of all 3 \u2014 walk to both Omicho and Kenrokuen. On-site parking. Modern design.', recommended:true, url:'https://en.the-squarehotel.com/skz/' },
+    { rank:2, name:'Hotel Forza Kanazawa', price:110, priceJPY:'12,100', parking:'No on-site (Omicho Parking Building 300m, ~\xA52,000/day)', location:'150m from Omicho Market, 20-min walk to Kenrokuen', view:'City view', highlights:'9.4 on Trip.com (613 reviews). Separated shower/bathtub. Free welcome drinks incl. alcohol. Opened 2019.', url:'https://www.hotelforza.jp/kanazawa/en/' },
+    { rank:3, name:'Machiya Residence Inn (Airbnb)', price:165, priceJPY:'18,150', parking:'No on-site (coin parking nearby ~\xA5700/night)', location:'Steps from Omicho Market & Kanazawa Castle, walking distance to Higashi Chaya', view:'Traditional courtyard & garden', highlights:'4.94 on Airbnb, Superhost. Renovated machiya townhouse with outdoor rotenburo bath, full kitchen, 75 sqm. THE honeymoon experience in Kanazawa.', url:'https://www.airbnb.com/rooms/1091671902681349389' },
+  ],
+  10: [
+    { rank:1, name:'Chirihama Hotel Yubana', price:220, priceJPY:'24,200', parking:'Free on-site (75 spots)', location:'3-min walk to Chirihama Beach', view:'Coastal area', highlights:'Onsen with \u201Cbeauty skin effect.\u201D Noto seafood kaiseki. Dinner + breakfast included in price. 4.55 on Ikyu.', recommended:true, url:'https://hotel-yubana.com/' },
+    { rank:2, name:'Kyukamura Noto-Chirihama', price:200, priceJPY:'22,000', parking:'Free on-site (200 spots)', location:'Chirihama onsen town, near beach', view:'Coastal / nature', highlights:'National Park Resort Village. Breakfast buffet included. 200 parking spots. Reliable government-run resort.', url:'https://hotel.qkamura.or.jp/en/noto-chirihama/' },
+    { rank:3, name:'Pension Shiosai', price:70, priceJPY:'7,700', parking:'Free (small lot)', location:'1-min walk to Chirihama Beach \u2014 closest of all', view:'Beach / coastal', highlights:'Budget pick. 4.5 on TripAdvisor. Tiny pension, true Japanese guesthouse. Book by phone or Japanese sites.' },
+  ],
+  11: [
+    { rank:1, name:'Comfort Inn Karuizawa', price:110, priceJPY:'12,100', parking:'Free on-site', location:'10-min drive to Old Karuizawa, 30-min walk to station', view:'Forest / nature setting', highlights:'Free parking is rare in Karuizawa. Surrounded by highland trees. Great value vs CA$270+ city average.', recommended:true, url:'https://www.choicehotels.com/japan/kitasaku-gun/comfort-inn-hotels/jp133' },
+    { rank:2, name:'Forest Cabin / Log House (Airbnb)', price:90, priceJPY:'9,900', parking:'Free on-site (rural property)', location:'Karuizawa highlands, 10-15 min drive to Old Karuizawa', view:'Forest canopy, Mt Asama views, stargazing', highlights:'Highland log cabin in dense forest. BBQ, mountain views, dark skies for stargazing. The honeymoon cabin experience. Browse Airbnb for your dates.', url:'https://www.airbnb.com/s/Karuizawa--Nagano--Japan/homes?checkin=2026-08-15&checkout=2026-08-16&adults=2&min_bedrooms=1&amenities%5B%5D=9' },
+    { rank:3, name:'Pension Sato no Nukumori', price:95, priceJPY:'10,450', parking:'On-site \xA5500/night (~CA$5)', location:'Karuizawa\u2019s wooded residential area', view:'Forest / highland trees', highlights:'Charming family-run pension. Most \u201CKaruizawa retreat\u201D feeling. Cheapest parking. Room-only, eat out.', url:'https://karuizawa-pension.net/en/' },
+  ],
+  12: [
+    { rank:1, name:'Hakone Ginyu', price:680, priceJPY:'74,800', parking:'Free on-site', location:'Miyanoshita, 130m from station. 10-min to Open-Air Museum', view:'Panoramic valley & mountain views from terraces', highlights:'EVERY room: private open-air bath + private dining room for in-room kaiseki. #2 ryokan in all Hakone. 9.5 service on Agoda. The ultimate honeymoon finale.', recommended:true, url:'https://www.hakoneginyu.co.jp/en/' },
+    { rank:2, name:'Hakone Kowakien Ten-yu', price:615, priceJPY:'67,650', parking:'On-site (75 spots, likely free)', location:'Ninotaira. Free shuttle from Gora Station', view:'Mountain / valley from terraced infinity onsen', highlights:'Dramatic terraced infinity onsen with horizon view. Every room has private open-air bath. Modern (2017). Dinner is buffet/upgrade, not in-room kaiseki.', url:'https://www.ten-yu.com/en/' },
+    { rank:3, name:'Yama no Chaya', price:650, priceJPY:'71,500', parking:'On-site', location:'Tonosawa, on suspension bridge over Hayakawa River gorge', view:'Bamboo grove, mountain stream, forested ravine', highlights:'Most atmospheric: 15 rooms on a suspension bridge in bamboo. 11 rooms with private bath. In-room kaiseki. 4.4/5 TripAdvisor. 50+ year institution. Book VERY early.', url:'https://luxury-ryokan.com/' },
+  ],
+  13: [
+    { rank:1, name:'Narita Tobu Hotel Airport', price:90, priceJPY:'9,900', parking:'On-site \xA51,000/day (not needed \u2014 car returned)', location:'10-min drive from Narita Airport', view:'Japanese garden courtyard', highlights:'Free shuttle 5AM-11PM. Pool, sauna, hot tub, garden. 8.8 on Expedia (6,555 reviews). Best pre-flight wind-down.', recommended:true, url:'https://www.tobuhotel.co.jp/narita/en/' },
+    { rank:2, name:'Toyoko Inn Narita Airport Shinkan', price:65, priceJPY:'7,150', parking:'On-site \xA5500/night (not needed)', location:'Free shuttle to/from airport', view:'Standard', highlights:'Free breakfast starting 5:30AM (eat before flight). 8.8 on Expedia. Budget pick \u2014 half the price of Tobu.', url:'https://www.toyoko-inn.com/eng/search/detail/00288/' },
+    { rank:3, name:'ART Hotel Narita', price:55, priceJPY:'6,050', parking:'Free on-site + EV charging', location:'10-min from airport, free shuttle', view:'Standard', highlights:'Cheapest option. Has on-site ONSEN \u2014 one last soak before flying home. 7.5 on Kayak (7,420 reviews). Recently renovated.', url:'https://www.art-narita.com/en-us/' },
+  ],
+};
+
+// Merge options into day objects
+OPTION_A.forEach(d => { if (ACCOM_OPTIONS[d.day]) d.accomOptions = ACCOM_OPTIONS[d.day]; });
+
+// --- Accommodation pick management ---
+function getAccomPicks() {
+  return _accomPicks;
+}
+function saveAccomPick(day, rank, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  _accomPicks[day] = rank;
+  sb.from('accom_picks').upsert({ day: String(day), rank, updated_at: new Date().toISOString() }).then();
+  renderSidebar();
+  updateHeaderStats();
+}
+function getSelectedOption(dayNum) {
+  const picks = getAccomPicks();
+  const dayData = getDays().find(d => d.day === dayNum);
+  if (!dayData?.accomOptions) return null;
+  const rank = picks[dayNum] || 1;
+  return dayData.accomOptions.find(o => o.rank === rank) || dayData.accomOptions[0];
+}
+const DAY_DATES = {
+  1:{in:'2026-08-05',out:'2026-08-06'}, 2:{in:'2026-08-06',out:'2026-08-07'},
+  3:{in:'2026-08-07',out:'2026-08-08'}, 4:{in:'2026-08-08',out:'2026-08-09'},
+  5:{in:'2026-08-09',out:'2026-08-11'}, 7:{in:'2026-08-11',out:'2026-08-12'},
+  8:{in:'2026-08-12',out:'2026-08-14'}, 10:{in:'2026-08-14',out:'2026-08-15'},
+  11:{in:'2026-08-15',out:'2026-08-16'}, 12:{in:'2026-08-16',out:'2026-08-17'},
+  13:{in:'2026-08-17',out:'2026-08-18'},
+};
+function bookUrl(name, dayNum) {
+  const d = DAY_DATES[dayNum];
+  if (!d) return 'https://www.booking.com/searchresults.html?ss=' + encodeURIComponent(name + ' Japan') + '&no_rooms=1&group_adults=2';
+  return 'https://www.booking.com/searchresults.html?ss=' + encodeURIComponent(name) + '&checkin=' + d.in + '&checkout=' + d.out + '&no_rooms=1&group_adults=2';
+}
+
+const BOOKING_DAY_MAP = {
+  'b_accom_shinjuku':{day:1,nights:1}, 'b_accom_shimoda':{day:2,nights:1},
+  'b_ryokan_izu':{day:3,nights:1}, 'b_accom_fuji':{day:4,nights:1},
+  'b_accom_matsumoto':{day:5,nights:2}, 'b_ryokan_takayama':{day:7,nights:1},
+  'b_accom_kanazawa':{day:8,nights:2}, 'b_accom_noto':{day:10,nights:1},
+  'b_accom_karuizawa':{day:11,nights:1}, 'b_ryokan_hakone':{day:12,nights:1},
+  'b_accom_narita':{day:13,nights:1},
+};
+
+let activeDay = null;
+let map, markers = [], routeLine, imageCache = {};
+
+function getDays() { return OPTION_A; }
+
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([36.5, 138.5], 6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
+  }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+}
+
+function getMarkerIcon(day, isActive) {
+  const color = TYPE_COLORS[day.type] || '#94a3b8';
+  return L.divIcon({
+    className: 'custom-marker-wrap',
+    html: `<div class="custom-marker ${isActive?'active':''}" style="background:${color}">${day.day}</div>`,
+    iconSize: [28, 28], iconAnchor: [14, 14]
+  });
+}
+
+function renderMap() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if (routeLine) map.removeLayer(routeLine);
+
+  const days = getDays();
+  const coords = [];
+
+  days.forEach(day => {
+    const marker = L.marker(day.coords, { icon: getMarkerIcon(day, activeDay === day.day) })
+      .addTo(map)
+      .bindTooltip(`Day ${day.day}: ${day.title}`, { direction: 'top', offset: [0, -16] })
+      .on('click', () => selectDay(day.day));
+    markers.push(marker);
+    coords.push(day.coords);
+  });
+
+  // Deduplicate consecutive same coords for cleaner line
+  const lineCoords = [coords[0]];
+  for (let i = 1; i < coords.length; i++) {
+    if (coords[i][0] !== coords[i-1][0] || coords[i][1] !== coords[i-1][1]) {
+      lineCoords.push(coords[i]);
+    }
+  }
+
+  routeLine = L.polyline(lineCoords, {
+    color: '#f59e0b', weight: 3, opacity: 0.6, dashArray: '8 6'
+  }).addTo(map);
+
+  if (!activeDay) {
+    map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
+  }
+}
+
+function renderSidebar() {
+  const days = getDays();
+  const picks = getAccomPicks();
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = days.map(day => {
+    const color = TYPE_COLORS[day.type] || '#94a3b8';
+    const isActive = activeDay === day.day;
+    const selRank = picks[day.day] || 1;
+    // For linked days (night 2 of multi-night), show linked day's pick
+    const linkedOpt = day.accom.linkedDay ? getSelectedOption(day.accom.linkedDay) : null;
+    return `
+      <div class="day-card ${isActive ? 'active' : ''}" id="day-${day.day}" onclick="selectDay(${day.day})">
+        <div class="day-card-header">
+          <div class="day-num" style="background:${color}">${day.day}</div>
+          <div class="day-info">
+            <div class="day-date">${day.date}</div>
+            <div class="day-title">${day.title}</div>
+            <div class="day-subtitle">${day.subtitle}</div>
+          </div>
+          <span class="type-badge" style="background:${color}22;color:${color}">${day.type}</span>
+        </div>
+        ${day.driving ? `<div class="day-driving">&#128663; ${day.driving}${day.temp ? ` &nbsp;|&nbsp; ${day.temp}` : ''}</div>` : ''}
+        <div class="day-detail">
+          <div class="day-detail-inner">
+            <div class="detail-image" id="img-${day.day}">
+              <div class="img-placeholder" style="background:linear-gradient(135deg,${color}33,${color}11)">Loading photo...</div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">Activities</div>
+              <ul>${day.activities.map(a => `<li>${a}</li>`).join('')}</ul>
+            </div>
+            <div class="detail-section food">
+              <div class="detail-section-title">Food</div>
+              <ul>${day.food.map(f => `<li>${f}</li>`).join('')}</ul>
+            </div>
+            <div class="detail-section photo">
+              <div class="detail-section-title">Photo Spots (X-H2S)</div>
+              <ul>${day.photo.map(p => `<li>${p}</li>`).join('')}</ul>
+            </div>
+            ${day.accomOptions ? `
+            <div class="accom-options-title">&#127968; Accommodation Options</div>
+            ${day.accomOptions.map(opt => {
+              const isSel = opt.rank === selRank;
+              return `
+              <div class="accom-option ${opt.recommended ? 'recommended' : ''} ${isSel ? 'selected' : ''}">
+                <div class="ao-header">
+                  <div class="ao-rank">${opt.recommended ? '\u2605' : opt.rank}</div>
+                  <div class="ao-name">${opt.name}</div>
+                  <div class="ao-price">CA$${opt.price}<br><span class="ao-price-jpy">\xA5${opt.priceJPY}</span></div>
+                </div>
+                <div class="ao-details">
+                  <div class="ao-row"><span class="ao-icon">\ud83c\udd7f\ufe0f</span><span>${opt.parking}</span></div>
+                  <div class="ao-row"><span class="ao-icon">\ud83d\udccd</span><span>${opt.location}</span></div>
+                  <div class="ao-row"><span class="ao-icon">\ud83c\udf04</span><span>${opt.view}</span></div>
+                  <div class="ao-row"><span class="ao-icon">\u2728</span><span class="ao-highlight">${opt.highlights}</span></div>
+                </div>
+                <div class="ao-actions">
+                  <button class="ao-btn-select ${isSel ? 'active' : ''}" onclick="saveAccomPick(${day.day},${opt.rank},event)">${isSel ? '\u2713 Selected' : 'Select'}</button>
+                  <a class="ao-btn-book" href="${opt.url || bookUrl(opt.name, day.day)}" target="_blank" onclick="event.stopPropagation()">${opt.url ? (opt.url.includes('airbnb') ? 'Airbnb' : opt.url.includes('booking.com') ? 'Booking.com' : 'Official Site') : 'Search'} \u2192</a>
+                </div>
+              </div>`;
+            }).join('')}
+            ` : `
+            <div class="detail-accommodation">
+              <div>
+                <div class="name">${linkedOpt ? linkedOpt.name : day.accom.name}</div>
+                <div class="accom-type">${linkedOpt ? 'Same hotel, night 2 of 2' : day.accom.type}</div>
+              </div>
+              <div class="price">${(linkedOpt ? linkedOpt.price : day.accom.price) > 0 ? 'CA$' + (linkedOpt ? linkedOpt.price : day.accom.price) : '\u2014'}</div>
+            </div>
+            `}
+            <div class="detail-links">
+              <a href="https://www.google.com/maps/search/${encodeURIComponent(day.title + ' Japan')}" target="_blank">&#127758; Google Maps</a>
+              <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(day.subtitle + ' ' + day.title + ' Japan travel')}" target="_blank">&#9654; YouTube</a>
+              <a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(day.title + ' ' + day.subtitle + ' Japan')}" target="_blank">&#128247; Photos</a>
+              <a href="https://en.wikipedia.org/wiki/${day.wiki}" target="_blank">&#128214; Wiki</a>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  updateHeaderStats();
+}
+
+function selectDay(dayNum) {
+  if (activeDay === dayNum) { activeDay = null; }
+  else { activeDay = dayNum; }
+
+  renderSidebar();
+  renderMap();
+
+  if (activeDay) {
+    const day = getDays().find(d => d.day === dayNum);
+    map.flyTo(day.coords, day.type === 'travel' ? 10 : 12, { duration: 0.8 });
+
+    setTimeout(() => {
+      const el = document.getElementById(`day-${dayNum}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    loadImage(dayNum, day.wiki);
+  }
+}
+
+async function loadImage(dayNum, wikiTitle) {
+  if (imageCache[wikiTitle]) {
+    setImage(dayNum, imageCache[wikiTitle]);
+    return;
+  }
+  try {
+    const resp = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`);
+    const data = await resp.json();
+    const url = data.originalimage?.source || data.thumbnail?.source;
+    if (url) {
+      imageCache[wikiTitle] = url;
+      setImage(dayNum, url);
+    }
+  } catch(e) { /* keep placeholder */ }
+}
+
+function setImage(dayNum, url) {
+  const container = document.getElementById(`img-${dayNum}`);
+  if (!container) return;
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = '';
+  img.style.opacity = '0';
+  img.onload = () => { img.style.opacity = '1'; };
+  const placeholder = container.querySelector('.img-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+  container.appendChild(img);
+}
+
+function updateHeaderStats() {
+  const days = getDays();
+  const picks = getAccomPicks();
+  const totalAccom = days.reduce((s, d) => {
+    if (d.accomOptions) {
+      const r = picks[d.day] || 1;
+      const opt = d.accomOptions.find(o => o.rank === r);
+      return s + (opt ? opt.price : d.accom.price);
+    }
+    if (d.accom.linkedDay) {
+      const lopt = getSelectedOption(d.accom.linkedDay);
+      return s + (lopt ? lopt.price : d.accom.price);
+    }
+    return s + d.accom.price;
+  }, 0);
+  const beachDays = days.filter(d => d.type === 'beach').length;
+  const ryokanNights = days.filter(d => d.accom.type.toLowerCase().includes('ryokan')).length;
+  const drivingDays = days.filter(d => d.driving && !d.driving.includes('None')).length;
+
+  document.getElementById('headerStats').innerHTML = `
+    <div class="stat">&#128197; ${days.length} days</div>
+    <div class="stat">&#127754; ${beachDays} beach</div>
+    <div class="stat">&#9832; ${ryokanNights} ryokan</div>
+    <div class="stat">&#128176; ~CA$${totalAccom} lodging</div>
+  `;
+}
+
+function showModal(type) {
+  closeModals();
+  if (type === 'budget') renderBudget();
+  if (type === 'bookings') renderBookings();
+  if (type === 'checklist') renderChecklist();
+  document.getElementById(`modal-${type}`).classList.add('show');
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
+}
+
+function renderBudget() {
+  const rows = [
+    ['International Flights (2 ppl)', 'Tunis\u2192Tokyo + Tokyo\u2192Toronto', 5626],
+    ['Toronto\u2192Tunis (est.)', 'For 2 people', 1600],
+    ['Car Rental (12 days)', 'Pickup Shinjuku Day 2, return Narita Day 13. Compact + CDW/NOC', 1000],
+    ['Expressway Tolls', 'ETC card, mixed express/free roads', 350],
+    ['Gas (~2,500km)', '~125L at 170 yen/L', 180],
+    ['Parking', 'Mostly rural = cheap', 80],
+    ['Airport Limousine Bus', 'Narita \u2192 Shinjuku, 2 people', 55],
+    ['Budget Nights (10)', 'Hotels + inns @ ~CA$105 avg (incl. Noto ryokan)', 1135],
+    ['Ryokan Nights (3)', 'Bousui + Hiranoya Bekkan + Ginyu', 1595],
+    ['Food (13 days, 2 ppl)', 'Mix of konbini, casual, splurge', 950],
+    ['Activities & Entry Fees', 'Temples, buses, snorkeling gear', 150],
+    ['eSIM / Pocket WiFi', '2 weeks', 40],
+    ['Misc (souvenirs, drinks)', '', 150],
+  ];
+  const total = rows.reduce((s, r) => s + r[2], 0);
+  const maxVal = Math.max(...rows.map(r => r[2]));
+
+  document.getElementById('budgetContent').innerHTML = `
+    <h2>Budget Breakdown</h2>
+    <table class="budget-table">
+      <thead><tr><th>Category</th><th>Notes</th><th style="text-align:right">CAD</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r[0]}</td>
+            <td style="color:var(--muted);font-size:12px">${r[1]}</td>
+            <td style="text-align:right">$${r[2].toLocaleString()}</td>
+          </tr>
+          <tr><td colspan="3" style="padding:0 12px 8px">
+            <div class="budget-bar"><div class="budget-bar-fill" style="width:${(r[2]/maxVal*100)}%;background:${r[2]>1000?'var(--accent)':r[2]>500?'var(--cultural)':'var(--mountain)'}"></div></div>
+          </td></tr>
+        `).join('')}
+        <tr class="total"><td>TOTAL</td><td></td><td style="text-align:right">CA$${total.toLocaleString()}</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:16px;font-size:12px;color:var(--muted)">Using 1 CAD ~ 110 JPY. Actual costs will vary. Ryokan and flight prices are estimates — book early for best rates.</p>
+    <button onclick="closeModals()" style="margin-top:16px;padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
+  `;
+}
+
+const BOOKINGS = [
+  { group: 'Flights', priority: 'now', priorityLabel: 'Book ASAP', items: [
+    { id:'b_flight_tor_tun', text:'Toronto \u2192 Tunis flights (2 ppl)', detail:'July 17-19 departure. Check Air Transat, Turkish Airlines, Royal Air Maroc', est:1600 },
+    { id:'b_flight_tun_tok', text:'Tunis \u2192 Tokyo Narita (2 ppl)', detail:'Aug 4, Turkish Airlines via Istanbul, 14h 55m', est:3568 },
+    { id:'b_flight_tok_tor', text:'Tokyo \u2192 Toronto flights (2 ppl)', detail:'Aug 18, via Calgary, 15h 45m', est:2058 },
+  ]},
+  { group: 'Ryokan (sell out months ahead)', priority: 'now', priorityLabel: 'Book ASAP', items: [
+    { id:'b_ryokan_izu', text:'Ryokan #1: Izu \u2014 Bousui (\u671B\u6C34)', detail:'Hokkawa. Private in-room onsen, ocean view every room, kaiseki dinner. Alt: Mibunoshou (8 rooms, CA$515) or Akazawa Onsen (CA$300)', est:500, checkin:'Thu, Aug 7', checkout:'Fri, Aug 8', nights:1 },
+    { id:'b_ryokan_takayama', text:'Ryokan #2: Takayama \u2014 Honjin Hiranoya Bekkan', detail:'Heart of old town, riverside, Hida beef kaiseki + free parking. Alt: Oyado Koto No Yume (CA$350 B&B, no dinner/parking) or Hidatei Hanaougi (CA$650, private onsen)', est:415, checkin:'Mon, Aug 11', checkout:'Tue, Aug 12', nights:1 },
+    { id:'b_ryokan_hakone', text:'Ryokan #3: Hakone \u2014 Ginyu', detail:'Private bath + in-room kaiseki dinner, panoramic valley, free parking. #2 ryokan in Hakone. Alt: Ten-yu (CA$615, infinity onsen) or Yama no Chaya (CA$650, 15 rooms, bamboo grove)', est:680, checkin:'Sat, Aug 16', checkout:'Sun, Aug 17', nights:1 },
+  ]},
+  { group: 'Car Rental', priority: 'soon', priorityLabel: 'Book 3-4 months ahead', items: [
+    { id:'b_car', text:'12-day car rental (compact)', detail:'Times Car or Toyota Rent-a-Car. Pickup: Shinjuku branch ~1PM Aug 6. Return: Narita Aug 17. Get CDW + NOC insurance. Request ETC card.', est:1000 },
+  ]},
+  { group: 'Accommodation \u2014 Budget Nights', priority: 'soon', priorityLabel: 'Book 2-3 months ahead', items: [
+    { id:'b_accom_shinjuku', text:'Shinjuku \u2014 APA Hotel Kabukicho Tower', detail:'Rooftop onsen, 3-min Omoide Yokocho. Alt: Kadoya (CA$165, spacious) or Nishitetsu Inn (CA$130)', est:115, checkin:'Tue, Aug 5', checkout:'Wed, Aug 6', nights:1 },
+    { id:'b_accom_shimoda', text:'Shimoda \u2014 Shimoda Prince Hotel', detail:'Free parking, ocean views, onsen. Alt: Tokyu Hotel (CA$175, bay views, pool) or White Beach Hotel (CA$75, on beach)', est:110, checkin:'Wed, Aug 6', checkout:'Thu, Aug 7', nights:1 },
+    { id:'b_accom_fuji', text:'Kawaguchiko \u2014 Station Inn', detail:'Free parking, hot spring with Fuji view. Alt: Hotel Regina (CA$150, Fuji from ALL rooms) or Hotel Koryu (CA$170, private open-air bath)', est:100, checkin:'Fri, Aug 8', checkout:'Sat, Aug 9', nights:1 },
+    { id:'b_accom_matsumoto', text:'Matsumoto \u2014 Dormy Inn (2 nights)', detail:'Hot spring, free ramen. Parking nearby \xA51,000-1,500/day. Alt: Ace Inn (CA$95, on-site parking) or Marunouchi (CA$165, castle-adjacent)', est:190, checkin:'Sat, Aug 9', checkout:'Mon, Aug 11', nights:2 },
+    { id:'b_accom_kanazawa', text:'Kanazawa \u2014 The Square Hotel (2 nights)', detail:'On-site parking \xA51,300/day, between Omicho & Kenrokuen. Alt: Hotel Forza (CA$110) or Machiya Airbnb (CA$165, traditional townhouse + rotenburo)', est:200, checkin:'Tue, Aug 12', checkout:'Thu, Aug 14', nights:2 },
+    { id:'b_accom_noto', text:'Noto \u2014 Chirihama Hotel Yubana', detail:'Onsen, Noto seafood dinner+breakfast incl., free parking (75 spots). Alt: Kyukamura (CA$200, 200 spots) or Pension Shiosai (CA$70, budget)', est:220, checkin:'Thu, Aug 14', checkout:'Fri, Aug 15', nights:1 },
+    { id:'b_accom_karuizawa', text:'Karuizawa \u2014 Comfort Inn', detail:'Free parking, forest setting. Alt: Forest Cabin Airbnb (CA$90, log house + stargazing) or Pension Nukumori (CA$95, cozy forest)', est:110, checkin:'Fri, Aug 15', checkout:'Sat, Aug 16', nights:1 },
+    { id:'b_accom_narita', text:'Narita \u2014 Tobu Hotel Airport', detail:'Pool, sauna, garden, free shuttle 5AM-11PM. Alt: Toyoko Inn (CA$65, free breakfast 5:30AM) or ART Hotel (CA$55, onsen)', est:90, checkin:'Sun, Aug 17', checkout:'Mon, Aug 18', nights:1 },
+  ]},
+  { group: 'Documents & Insurance', priority: 'soon', priorityLabel: 'Do 2+ months ahead', items: [
+    { id:'b_idp', text:'International Driving Permit (IDP)', detail:'Get from any CAA office. Bring Canadian license + passport photo. ~CA$25.', est:25 },
+    { id:'b_visa', text:'Verify Japan visa for Tunisian passport', detail:'Contact Embassy of Japan in Ottawa or check MOFA website. CRITICAL \u2014 verify before booking anything else.', est:0 },
+    { id:'b_insurance', text:'Travel insurance', detail:'Must cover trip interruption/delay. Check if Canadian PR health coverage extends to Japan.', est:200 },
+  ]},
+  { group: 'Tech & Connectivity', priority: 'later', priorityLabel: 'Book 1-2 weeks ahead', items: [
+    { id:'b_esim', text:'Japan eSIM', detail:'Ubigi or Airalo, 2-week data plan. Install before departure.', est:40 },
+  ]},
+  { group: 'Buy on Arrival', priority: 'later', priorityLabel: 'No advance booking needed', items: [
+    { id:'b_limbus', text:'Airport Limousine Bus (Narita \u2192 Shinjuku)', detail:'Buy at arrival counter in Narita. ~3,200 yen/person. Direct to major Shinjuku hotels.', est:55 },
+    { id:'b_suica', text:'Suica/Pasmo IC card or Apple Wallet setup', detail:'For train rides. Add to Apple Wallet or buy physical card at airport.', est:0 },
+  ]},
+];
+
+function getBookingData() {
+  return _bookingData;
+}
+function saveBookingData(data) {
+  _bookingData = data;
+}
+function saveField(id, field, value) {
+  if (!_bookingData[id]) _bookingData[id] = {};
+  if (field === 'actual') {
+    _bookingData[id][field] = value === '' ? null : parseFloat(value);
+  } else if (field === 'done') {
+    _bookingData[id][field] = value;
+  } else {
+    _bookingData[id][field] = value;
+  }
+  const row = { id, done: _bookingData[id].done || false, actual: _bookingData[id].actual || null, notes: _bookingData[id].notes || null, updated_at: new Date().toISOString() };
+  sb.from('bookings').upsert(row).then();
+  refreshProgress();
+}
+function getEffectiveEst(item) {
+  const m = BOOKING_DAY_MAP[item.id];
+  if (m) { const o = getSelectedOption(m.day); if (o) return o.price * m.nights; }
+  return item.est;
+}
+function refreshProgress() {
+  const data = getBookingData();
+  const allItems = BOOKINGS.flatMap(g => g.items);
+  const doneCount = allItems.filter(i => data[i.id]?.done).length;
+  const totalEst = allItems.reduce((s, i) => s + getEffectiveEst(i), 0);
+  const totalActual = allItems.reduce((s, i) => s + (parseFloat(data[i.id]?.actual) || 0), 0);
+  const totalBooked = allItems.filter(i => data[i.id]?.done).reduce((s, i) => {
+    const a = parseFloat(data[i.id]?.actual);
+    return s + (a > 0 ? a : getEffectiveEst(i));
+  }, 0);
+  const pct = Math.round((doneCount / allItems.length) * 100);
+  const el = (id) => document.getElementById(id);
+  if (el('bp-count')) el('bp-count').textContent = `${doneCount} of ${allItems.length} booked`;
+  if (el('bp-pct')) el('bp-pct').textContent = `${pct}%`;
+  if (el('bp-bar')) el('bp-bar').style.width = pct + '%';
+  if (el('bp-est')) el('bp-est').textContent = `CA$${totalEst.toLocaleString()}`;
+  if (el('bp-actual')) el('bp-actual').textContent = totalActual > 0 ? `CA$${totalActual.toLocaleString()}` : '\u2014';
+  if (el('bp-remain')) el('bp-remain').textContent = `CA$${(totalEst - totalBooked).toLocaleString()}`;
+  if (el('bp-savings')) {
+    el('bp-savings').textContent = totalActual > 0 ? (totalActual < totalEst ? '-CA$' + (totalEst - totalActual).toLocaleString() : '+CA$' + (totalActual - totalEst).toLocaleString()) : '\u2014';
+    el('bp-savings').style.color = totalActual > 0 && totalActual < totalEst ? 'var(--mountain)' : 'var(--muted)';
+  }
+}
+
+function handleCheckbox(id, el) {
+  saveField(id, 'done', el.checked);
+  const card = el.closest('.booking-item');
+  if (card) card.classList.toggle('done', el.checked);
+}
+
+function renderBookings() {
+  const data = getBookingData();
+  const allItems = BOOKINGS.flatMap(g => g.items);
+  const doneCount = allItems.filter(i => data[i.id]?.done).length;
+  const totalEst = allItems.reduce((s, i) => s + getEffectiveEst(i), 0);
+  const totalActual = allItems.reduce((s, i) => s + (parseFloat(data[i.id]?.actual) || 0), 0);
+  const totalBooked = allItems.filter(i => data[i.id]?.done).reduce((s, i) => {
+    const a = parseFloat(data[i.id]?.actual);
+    return s + (a > 0 ? a : getEffectiveEst(i));
+  }, 0);
+  const pct = Math.round((doneCount / allItems.length) * 100);
+
+  document.getElementById('bookingsContent').innerHTML = `
+    <h2>Bookings Tracker</h2>
+    <div class="booking-progress">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span id="bp-count" style="font-size:14px;font-weight:600">${doneCount} of ${allItems.length} booked</span>
+        <span id="bp-pct" style="font-size:14px;font-weight:700;color:var(--accent)">${pct}%</span>
+      </div>
+      <div class="booking-progress-bar">
+        <div id="bp-bar" class="booking-progress-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="booking-progress-stats">
+        <div class="bp-stat"><span class="bp-label">Estimated Total</span><span id="bp-est" class="bp-value">CA$${totalEst.toLocaleString()}</span></div>
+        <div class="bp-stat"><span class="bp-label">Actual Spent</span><span id="bp-actual" class="bp-value accent">CA$${totalActual > 0 ? totalActual.toLocaleString() : '\u2014'}</span></div>
+        <div class="bp-stat"><span class="bp-label">Remaining (est.)</span><span id="bp-remain" class="bp-value">CA$${(totalEst - totalBooked).toLocaleString()}</span></div>
+        <div class="bp-stat"><span class="bp-label">Savings vs Est.</span><span id="bp-savings" class="bp-value" style="color:${totalActual > 0 && totalActual < totalEst ? 'var(--mountain)' : 'var(--muted)'}">${totalActual > 0 ? (totalActual < totalEst ? '-CA$' + (totalEst - totalActual).toLocaleString() : '+CA$' + (totalActual - totalEst).toLocaleString()) : '\u2014'}</span></div>
+      </div>
+    </div>
+
+    ${BOOKINGS.map(group => `
+      <div class="booking-group">
+        <div class="booking-group-title">
+          ${group.group}
+          <span class="priority priority-${group.priority}">${group.priorityLabel}</span>
+        </div>
+        ${group.items.map(item => {
+          const d = data[item.id] || {};
+          const isAccom = !!item.checkin;
+          const _map = BOOKING_DAY_MAP[item.id];
+          const _sel = _map ? getSelectedOption(_map.day) : null;
+          const _text = _sel ? item.text.split('\u2014')[0].trim() + ' \u2014 ' + _sel.name + (_map.nights > 1 ? ' (' + _map.nights + ' nights)' : '') : item.text;
+          const _est = _sel ? _sel.price * _map.nights : item.est;
+          const _bUrl = _sel ? (_sel.url || bookUrl(_sel.name, _map.day)) : null;
+          return `
+          <div class="booking-item ${d.done ? 'done' : ''}">
+            <div class="booking-item-header">
+              <input type="checkbox" ${d.done ? 'checked' : ''} onchange="handleCheckbox('${item.id}',this)">
+              <span class="bi-text">${_text}</span>
+              <span class="bi-est">Est: CA$${_est.toLocaleString()}</span>
+              ${_bUrl ? '<a class="booking-book-link" href="' + _bUrl + '" target="_blank">Book \u2192</a>' : ''}
+            </div>
+            ${isAccom ? `
+            <div style="padding-left:28px;margin-bottom:6px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+              <div style="font-size:12px">
+                <span style="color:var(--mountain);font-weight:600">Check-in:</span>
+                <span style="color:var(--text)">${item.checkin}</span>
+              </div>
+              <span style="color:var(--muted)">\u2192</span>
+              <div style="font-size:12px">
+                <span style="color:var(--cultural);font-weight:600">Check-out:</span>
+                <span style="color:var(--text)">${item.checkout}</span>
+              </div>
+              <span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:6px">${item.nights} night${item.nights > 1 ? 's' : ''}</span>
+            </div>` : ''}
+            <div class="booking-item-details">${item.detail}</div>
+            <div class="booking-inputs">
+              <div class="bi-field">
+                <label>Actual Price (CAD)</label>
+                <input type="number" class="price-input" placeholder="0.00" value="${d.actual != null ? d.actual : ''}" onchange="saveField('${item.id}','actual',this.value)">
+              </div>
+              <div class="bi-field">
+                <label>Confirmation #</label>
+                <input type="text" class="conf-input" placeholder="Booking ref..." value="${d.conf || ''}" onchange="saveField('${item.id}','conf',this.value)">
+              </div>
+              ${isAccom ? `
+              <div class="bi-field">
+                <label>Check-in Time</label>
+                <input type="time" style="width:110px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;font-family:inherit" value="${d.checkinTime || ''}" onchange="saveField('${item.id}','checkinTime',this.value)">
+              </div>
+              <div class="bi-field">
+                <label>Check-out Time</label>
+                <input type="time" style="width:110px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;font-family:inherit" value="${d.checkoutTime || ''}" onchange="saveField('${item.id}','checkoutTime',this.value)">
+              </div>` : ''}
+              <div class="bi-field">
+                <label>Notes</label>
+                <input type="text" class="notes-input" placeholder="Any notes..." value="${d.notes || ''}" onchange="saveField('${item.id}','notes',this.value)">
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('')}
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="closeModals()" style="padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
+      <button onclick="exportBookings()" style="padding:10px 20px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:500;font-size:12px">Copy Summary</button>
+      <button onclick="if(confirm('Clear all booking data? This cannot be undone.')){sb.from('bookings').delete().neq('id','__none__').then(()=>{_bookingData={};renderBookings()})}" style="padding:10px 20px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:500;font-size:12px">Reset All</button>
+    </div>
+  `;
+}
+
+function exportBookings() {
+  const data = getBookingData();
+  const lines = ['JAPAN HONEYMOON 2026 \u2014 BOOKING STATUS\n'];
+  BOOKINGS.forEach(group => {
+    lines.push(`\n## ${group.group}`);
+    group.items.forEach(item => {
+      const d = data[item.id] || {};
+      const status = d.done ? '\u2705' : '\u2B1C';
+      const price = d.actual ? `CA$${d.actual}` : `~CA$${item.est} (est.)`;
+      const conf = d.conf ? ` | Conf: ${d.conf}` : '';
+      const dates = item.checkin ? ` | ${item.checkin} \u2192 ${item.checkout}` : '';
+      const times = d.checkinTime ? ` | In: ${d.checkinTime}` : '';
+      const timesOut = d.checkoutTime ? ` Out: ${d.checkoutTime}` : '';
+      lines.push(`${status} ${item.text} \u2014 ${price}${conf}${dates}${times}${timesOut}`);
+    });
+  });
+  const allItems = BOOKINGS.flatMap(g => g.items);
+  const totalActual = allItems.reduce((s, i) => s + (parseFloat(data[i.id]?.actual) || 0), 0);
+  const totalEst = allItems.reduce((s, i) => s + i.est, 0);
+  const doneCount = allItems.filter(i => data[i.id]?.done).length;
+  lines.push(`\n---\nProgress: ${doneCount}/${allItems.length} | Est: CA$${totalEst.toLocaleString()} | Actual: CA$${totalActual > 0 ? totalActual.toLocaleString() : 'TBD'}`);
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Summary', 2000);
+  });
+}
+
+function renderChecklist() {
+  const saved = _checklistData;
+  const sections = [
+    { title: 'Apps to Download', items: [
+      { id:'gmaps', text:'Google Maps — download Japan offline maps for mountain areas' },
+      { id:'gtranslate', text:'Google Translate — download Japanese offline pack + use camera translate' },
+      { id:'suica', text:'Set up Suica/Pasmo in Apple Wallet (for any train rides in cities)' },
+      { id:'tabelog', text:'Tabelog or Google Maps for restaurant reviews (Tabelog is Japan\'s Yelp)' },
+    ]},
+    { title: 'Packing — Camera Gear', items: [
+      { id:'xh2s', text:'Fujifilm X-H2S body' },
+      { id:'lens35', text:'XF 35mm f/1.4 (low light / street / food)' },
+      { id:'lenswide', text:'Wide angle lens (landscapes, interiors)' },
+      { id:'lens50', text:'XF 50mm f/2 or 56mm (portraits, Fuji compression shots)' },
+      { id:'batt', text:'3x spare batteries (heat drains them faster)' },
+      { id:'nd', text:'ND filter for waterfall long exposures (Shiraito Falls, etc.)' },
+      { id:'tripod', text:'Small tripod or GorillaPod (dawn Fuji shots, night photography)' },
+      { id:'wp', text:'Waterproof bag or housing (snorkeling photos at Hirizo/Kerama)' },
+      { id:'cloth', text:'Lens cloth x3 (humidity causes constant fogging between AC car and outdoors)' },
+      { id:'cards', text:'Spare SD cards' },
+    ]},
+    { title: 'Packing — Clothing & Essentials', items: [
+      { id:'light', text:'Light breathable fabrics (linen, moisture-wicking) — it\'s 30-35C with 70%+ humidity' },
+      { id:'layer', text:'1 light layer for mountains (Alps are 20-25C)' },
+      { id:'swim', text:'Swimsuit x2 (one to wear, one to dry)' },
+      { id:'shoes', text:'Comfortable walking shoes + sandals/water shoes' },
+      { id:'rain', text:'Compact rain jacket or umbrella' },
+      { id:'towel', text:'Quick-dry towel' },
+      { id:'sun', text:'Sunscreen + hat (mountain sun is intense)' },
+      { id:'bug', text:'Insect repellent (mountain/river areas)' },
+      { id:'rash', text:'Rash guard (jellyfish protection in ocean swimming)' },
+      { id:'cash', text:'Cash plan — Japan is still cash-heavy; withdraw at 7-Eleven ATMs' },
+      { id:'docs', text:'Passport + IDP + Canadian license (carry all three always)' },
+    ]},
+  ];
+
+  document.getElementById('checklistContent').innerHTML = `
+    <h2>Packing List</h2>
+    ${sections.map(s => `
+      <div class="checklist-section">
+        <h3>${s.title}</h3>
+        ${s.items.map(item => `
+          <div class="checklist-item ${saved[item.id] ? 'checked' : ''}">
+            <input type="checkbox" id="chk-${item.id}" ${saved[item.id]?'checked':''} onchange="toggleCheck('${item.id}', this.checked)">
+            <label for="chk-${item.id}">${item.text}</label>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
+    <button onclick="closeModals()" style="margin-top:16px;padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
+  `;
+}
+
+function toggleCheck(id, checked) {
+  _checklistData[id] = checked;
+  sb.from('checklist').upsert({ id, checked, updated_at: new Date().toISOString() }).then();
+  const item = document.querySelector(`#chk-${id}`).closest('.checklist-item');
+  item.classList.toggle('checked', checked);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
+
+// Boot — load from Supabase, then render
+initMap();
+loadAllData().then(() => {
+  renderSidebar();
+  renderMap();
+  setupRealtime();
+}).catch(err => {
+  console.warn('Supabase load failed, starting with empty state:', err);
+  renderSidebar();
+  renderMap();
+});
+</script>
+</body>
+</html>
