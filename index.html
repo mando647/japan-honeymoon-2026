@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Japan Honeymoon 2026 — Mando & Rim</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -13,146 +16,264 @@
     --beach: #38bdf8; --mountain: #4ade80; --city: #c084fc; --ryokan: #fbbf24;
     --cultural: #fb923c; --travel: #94a3b8; --scenic: #2dd4bf;
     --sidebar-w: 420px;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
+    --font-body: 'DM Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+    --font-jp: 'Noto Serif JP', serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+  body { font-family: var(--font-body); background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
 
   #app { display: flex; flex-direction: column; height: 100vh; }
 
+  /* ─── HEADER ─── */
   header {
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 12px 24px; display: flex; align-items: center; gap: 20px; flex-shrink: 0; z-index: 1000;
+    background: linear-gradient(180deg, var(--surface) 0%, rgba(30,41,59,0.95) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 20px; flex-shrink: 0; z-index: 1000;
+    backdrop-filter: blur(12px);
   }
-  header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
-  header h1 span { color: var(--accent); }
-  .header-stats { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
-  .header-stats .stat { display: flex; align-items: center; gap: 4px; }
-  .header-actions { display: flex; gap: 8px; }
-  .header-actions button {
-    padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
-    background: var(--card); color: var(--text); cursor: pointer; font-size: 12px;
-    transition: all 0.2s;
-  }
-  .header-actions button:hover { background: var(--card-hover); }
+  header h1 { font-size: 17px; font-weight: 600; white-space: nowrap; letter-spacing: -0.3px; }
+  header h1 span { color: var(--accent); font-weight: 700; }
+  header h1 .jp-text { font-family: var(--font-jp); font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 400; opacity: 0.7; }
 
-  .main { display: flex; flex: 1; overflow: hidden; }
+  .header-stats { display: flex; gap: 16px; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .header-stats .stat { display: flex; align-items: center; gap: 5px; }
+
+  .header-actions { display: flex; gap: 6px; }
+  .header-actions button {
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--text); cursor: pointer; font-size: 12px;
+    font-family: var(--font-body); font-weight: 500; transition: all 0.2s ease;
+  }
+  .header-actions button:hover { background: var(--card-hover); border-color: var(--accent); transform: translateY(-1px); }
+
+  .view-toggle { display: flex; background: var(--bg); border-radius: var(--radius-sm); padding: 2px; gap: 2px; }
+  .view-toggle button {
+    padding: 5px 14px; border: none; border-radius: 6px; background: transparent;
+    color: var(--muted); cursor: pointer; font-size: 12px; font-family: var(--font-body);
+    font-weight: 600; transition: all 0.2s ease; letter-spacing: 0.3px;
+  }
+  .view-toggle button.active { background: var(--accent); color: #0f172a; }
+  .view-toggle button:not(.active):hover { color: var(--text); }
+
+  /* ─── PROGRESS INDICATOR ─── */
+  .day-progress {
+    display: flex; align-items: center; gap: 10px; padding: 0 6px;
+    animation: fadeSlideIn 0.3s ease;
+  }
+  .day-progress-text { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); white-space: nowrap; }
+  .day-progress-bar { flex: 1; height: 3px; background: var(--bg); border-radius: 2px; min-width: 60px; overflow: hidden; }
+  .day-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── MAIN LAYOUT ─── */
+  .main { display: flex; flex: 1; overflow: hidden; position: relative; }
 
   #sidebar {
     width: var(--sidebar-w); background: var(--surface); overflow-y: auto;
     border-right: 1px solid var(--border); flex-shrink: 0; scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
-  #sidebar::-webkit-scrollbar { width: 6px; }
+  #sidebar::-webkit-scrollbar { width: 5px; }
   #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  #sidebar::-webkit-scrollbar-track { background: transparent; }
 
+  /* ─── DAY CARDS ─── */
   .day-card {
-    padding: 14px 18px; border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: all 0.2s; position: relative;
+    padding: 14px 18px; border-bottom: 1px solid rgba(71,85,105,0.5);
+    cursor: pointer; transition: all 0.25s ease; position: relative;
   }
-  .day-card:hover { background: var(--card); }
-  .day-card.active { background: var(--card); border-left: 3px solid var(--accent); }
-  .day-card-header { display: flex; align-items: center; gap: 10px; }
+  .day-card:hover { background: rgba(51,65,85,0.5); }
+  .day-card.active {
+    background: linear-gradient(135deg, rgba(51,65,85,0.8) 0%, rgba(30,41,59,0.9) 100%);
+    border-left: 3px solid var(--accent);
+  }
+  .day-card-header { display: flex; align-items: center; gap: 12px; }
   .day-num {
-    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center;
     justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: transform 0.2s ease;
   }
+  .day-card:hover .day-num { transform: scale(1.08); }
   .day-info { flex: 1; min-width: 0; }
-  .day-date { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .day-title { font-size: 14px; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .day-subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .day-date { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .day-title { font-size: 14px; font-weight: 600; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
+  .day-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 400; }
   .type-badge {
-    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
-    text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+    font-size: 9px; font-weight: 700; padding: 3px 10px; border-radius: 12px;
+    text-transform: uppercase; letter-spacing: 0.8px; flex-shrink: 0;
   }
-  .day-driving { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+  .day-driving { font-size: 11px; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 5px; line-height: 1.4; }
 
-  .day-detail { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
-  .day-card.active .day-detail { max-height: 3000px; }
-  .day-detail-inner { padding: 12px 0 4px; }
+  /* ─── DAY DETAIL (EXPANDED) ─── */
+  .day-detail { max-height: 0; overflow: hidden; transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+  .day-card.active .day-detail { max-height: 4000px; }
+  .day-detail-inner { padding: 16px 0 8px; }
 
   .detail-image {
-    width: 100%; height: 180px; border-radius: 8px; overflow: hidden;
-    background: var(--bg); position: relative; margin-bottom: 12px;
+    width: 100%; height: 190px; border-radius: var(--radius); overflow: hidden;
+    background: var(--bg); position: relative; margin-bottom: 16px;
+    box-shadow: var(--shadow-md);
   }
-  .detail-image img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s; }
+  .detail-image img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.6s ease; }
   .detail-image .img-placeholder {
     width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    font-size: 14px; color: var(--muted); position: absolute; top: 0; left: 0;
+    font-size: 13px; color: var(--muted); position: absolute; top: 0; left: 0; font-weight: 500;
   }
 
-  .detail-section { margin-bottom: 12px; }
+  .detail-section { margin-bottom: 16px; }
   .detail-section-title {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted); margin-bottom: 6px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted); margin-bottom: 8px; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(71,85,105,0.4);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .detail-section-title .section-icon {
+    width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center;
+    justify-content: center; font-size: 10px; flex-shrink: 0;
   }
   .detail-section ul { list-style: none; padding: 0; }
   .detail-section li {
-    font-size: 13px; padding: 3px 0; padding-left: 16px; position: relative; line-height: 1.5;
+    font-size: 13px; padding: 4px 0; padding-left: 18px; position: relative; line-height: 1.6;
   }
   .detail-section li::before {
-    content: ''; position: absolute; left: 0; top: 10px; width: 6px; height: 6px;
+    content: ''; position: absolute; left: 2px; top: 11px; width: 6px; height: 6px;
     border-radius: 50%; background: var(--accent);
   }
   .detail-section.food li::before { background: var(--cultural); }
   .detail-section.photo li::before { background: var(--city); }
   .detail-section.drives li::before { background: var(--travel); }
 
+  /* ─── ACCOMMODATION CARD ─── */
   .detail-accommodation {
-    background: var(--bg); border-radius: 8px; padding: 10px 14px;
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(30,41,59,0.6) 100%);
+    border-radius: var(--radius); padding: 14px 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px; position: relative; overflow: hidden;
   }
-  .detail-accommodation .name { font-size: 13px; font-weight: 500; }
-  .detail-accommodation .price { font-size: 14px; font-weight: 700; color: var(--accent); }
-  .detail-accommodation .accom-type { font-size: 11px; color: var(--muted); }
+  .detail-accommodation::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .detail-accommodation .accom-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+  .detail-accommodation .name { font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
+  .detail-accommodation .price { font-size: 16px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .detail-accommodation .accom-type { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .detail-accommodation .booking-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 10px;
+    margin-bottom: 6px;
+  }
+  .booking-badge.booked { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .booking-badge.pending { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .booking-badge.flight { background: rgba(148,163,184,0.15); color: #94a3b8; }
 
-  .detail-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .detail-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
   .detail-links a {
-    padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    padding: 7px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 500;
     text-decoration: none; background: var(--bg); color: var(--text); border: 1px solid var(--border);
-    transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+    transition: all 0.2s ease; display: flex; align-items: center; gap: 5px;
   }
-  .detail-links a:hover { background: var(--card-hover); border-color: var(--accent); }
+  .detail-links a:hover { background: var(--card-hover); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
 
-  #map { flex: 1; z-index: 1; }
+  /* ─── MAP ─── */
+  #map-container { flex: 1; position: relative; }
+  #map { width: 100%; height: 100%; z-index: 1; }
   .leaflet-container { background: var(--bg); }
 
   .custom-marker {
-    width: 28px; height: 28px; border-radius: 50%; border: 3px solid #fff;
+    width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9);
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    transition: transform 0.2s;
+    font-size: 11px; font-weight: 700; color: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-  .custom-marker:hover { transform: scale(1.2); }
-  .custom-marker.active { transform: scale(1.3); box-shadow: 0 0 0 4px rgba(245,158,11,0.4); }
+  .custom-marker:hover { transform: scale(1.2); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+  .custom-marker.active { transform: scale(1.35); box-shadow: 0 0 0 4px rgba(245,158,11,0.5), 0 4px 16px rgba(0,0,0,0.5); }
 
+  /* ─── CALENDAR VIEW ─── */
+  #calendar-container {
+    flex: 1; overflow-y: auto; background: var(--bg); padding: 32px;
+    display: none;
+  }
+  .calendar-month-title {
+    font-family: var(--font-jp); font-size: 28px; font-weight: 700; text-align: center;
+    margin-bottom: 6px; color: var(--text); letter-spacing: 1px;
+  }
+  .calendar-month-subtitle { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 24px; font-weight: 500; letter-spacing: 0.5px; }
+  .calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    max-width: 900px; margin: 0 auto;
+  }
+  .calendar-header-cell {
+    text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); padding: 8px 0;
+  }
+  .calendar-cell {
+    min-height: 100px; border-radius: var(--radius-sm); padding: 8px 10px;
+    border: 1px solid var(--border); background: var(--surface);
+    transition: all 0.2s ease; position: relative; cursor: default;
+  }
+  .calendar-cell.empty { background: transparent; border-color: transparent; }
+  .calendar-cell.dimmed { opacity: 0.3; }
+  .calendar-cell.trip-day {
+    cursor: pointer; border-width: 2px;
+  }
+  .calendar-cell.trip-day:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .calendar-cell.trip-day.active { box-shadow: 0 0 0 2px var(--accent), var(--shadow-md); }
+  .calendar-cell .cal-date {
+    font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px;
+  }
+  .calendar-cell.trip-day .cal-date { color: var(--text); }
+  .calendar-cell .cal-icon { font-size: 18px; margin-bottom: 2px; }
+  .calendar-cell .cal-location { font-size: 10px; font-weight: 600; line-height: 1.3; margin-bottom: 3px; }
+  .calendar-cell .cal-accom { font-size: 9px; color: var(--muted); line-height: 1.3; font-weight: 400; }
+  .calendar-cell .cal-type-dot {
+    position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ─── MODALS ─── */
   .modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75);
     z-index: 2000; display: none; align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
   }
   .modal-overlay.show { display: flex; }
   .modal {
     background: var(--surface); border-radius: 16px; padding: 32px; max-width: 700px;
     width: 90%; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.3s ease;
   }
-  .modal h2 { font-size: 20px; margin-bottom: 20px; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal h2 { font-size: 22px; margin-bottom: 20px; font-weight: 700; letter-spacing: -0.3px; }
   .budget-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .budget-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase; }
-  .budget-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .budget-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .budget-table td { padding: 8px 12px; border-bottom: 1px solid rgba(71,85,105,0.4); }
   .budget-table .total td { font-weight: 700; border-top: 2px solid var(--accent); color: var(--accent); font-size: 15px; }
-  .budget-bar { height: 8px; border-radius: 4px; background: var(--bg); margin-top: 4px; overflow: hidden; }
-  .budget-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .budget-bar { height: 6px; border-radius: 3px; background: var(--bg); margin-top: 4px; overflow: hidden; }
+  .budget-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
 
-  .checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .checklist-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; }
+  .modal-close-btn {
+    margin-top: 20px; padding: 10px 24px; background: var(--accent); color: #0f172a; border: none;
+    border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; font-family: var(--font-body);
+    font-size: 13px; transition: all 0.2s ease; letter-spacing: 0.3px;
+  }
+  .modal-close-btn:hover { background: #fbbf24; transform: translateY(-1px); }
+
+  .checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(71,85,105,0.4); transition: opacity 0.2s; }
+  .checklist-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
   .checklist-item label { font-size: 13px; line-height: 1.5; cursor: pointer; }
   .checklist-item.checked label { text-decoration: line-through; color: var(--muted); }
-  .checklist-section { margin-bottom: 20px; }
-  .checklist-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+  .checklist-section { margin-bottom: 24px; }
+  .checklist-section h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--accent); letter-spacing: 0.3px; }
 
-  .booking-progress { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-  .booking-progress-bar { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 10px 0; }
-  .booking-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--mountain)); border-radius: 5px; transition: width 0.5s; }
+  .booking-progress { background: var(--card); border-radius: var(--radius); padding: 18px; margin-bottom: 24px; }
+  .booking-progress-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 10px 0; }
+  .booking-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--mountain)); border-radius: 4px; transition: width 0.6s ease; }
   .booking-progress-stats { display: flex; gap: 24px; font-size: 13px; flex-wrap: wrap; }
   .booking-progress-stats .bp-stat { display: flex; flex-direction: column; gap: 2px; }
   .booking-progress-stats .bp-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -172,7 +293,7 @@
   .priority-cancel { background: #ef444433; color: #f87171; }
 
   .booking-item {
-    background: var(--card); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+    background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
     border-left: 3px solid var(--border); transition: all 0.2s;
   }
   .booking-item.done { border-left-color: var(--mountain); opacity: 0.8; }
@@ -181,15 +302,16 @@
   .booking-item-header .bi-text { flex: 1; font-size: 14px; font-weight: 500; }
   .booking-item-header .bi-est { font-size: 13px; color: var(--muted); white-space: nowrap; }
   .booking-item.done .bi-text { text-decoration: line-through; color: var(--muted); }
-  .booking-item-details { font-size: 12px; color: var(--muted); margin-bottom: 8px; padding-left: 28px; }
+  .booking-item-details { font-size: 12px; color: var(--muted); margin-bottom: 8px; padding-left: 28px; line-height: 1.5; }
   .booking-inputs { display: flex; gap: 8px; padding-left: 28px; flex-wrap: wrap; }
   .booking-inputs .bi-field { display: flex; flex-direction: column; gap: 3px; }
-  .booking-inputs .bi-field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .booking-inputs .bi-field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; }
   .booking-inputs .bi-field input {
     background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-    padding: 6px 10px; color: var(--text); font-size: 13px; font-family: inherit;
+    padding: 7px 10px; color: var(--text); font-size: 13px; font-family: var(--font-body);
+    transition: border-color 0.2s;
   }
-  .booking-inputs .bi-field input:focus { outline: none; border-color: var(--accent); }
+  .booking-inputs .bi-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
   .booking-inputs .bi-field input.price-input { width: 110px; }
   .booking-inputs .bi-field input.conf-input { width: 160px; }
   .booking-inputs .bi-field input.notes-input { width: 220px; }
@@ -197,27 +319,41 @@
   @media (max-width: 768px) {
     .main { flex-direction: column; }
     #sidebar { width: 100%; height: 45vh; border-right: none; border-bottom: 1px solid var(--border); }
-    #map { height: 55vh; }
+    #map-container { height: 55vh; }
+    #calendar-container { height: 55vh; }
     .header-stats { display: none; }
-    header { padding: 10px 16px; gap: 10px; }
+    .day-progress { display: none; }
+    header { padding: 0 16px; gap: 10px; }
     .modal { padding: 20px; }
+    .calendar-grid { gap: 3px; }
+    .calendar-cell { min-height: 70px; padding: 4px 6px; }
   }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>Japan <span>2026</span></h1>
+    <h1>Japan <span>2026</span><span class="jp-text">日本の新婚旅行</span></h1>
     <div class="header-stats" id="headerStats"></div>
-    <div class="header-actions" style="margin-left:auto">
-      <button onclick="showModal('budget')">Budget</button>
-      <button onclick="showModal('bookings')">Bookings</button>
-      <button onclick="showModal('checklist')">Packing</button>
+    <div id="dayProgress"></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <div class="view-toggle" id="viewToggle">
+        <button class="active" onclick="setView('map')">Map</button>
+        <button onclick="setView('calendar')">Calendar</button>
+      </div>
+      <div class="header-actions">
+        <button onclick="showModal('budget')">&#128176; Budget</button>
+        <button onclick="showModal('bookings')">&#128203; Bookings</button>
+        <button onclick="showModal('checklist')">&#127890; Packing</button>
+      </div>
     </div>
   </header>
   <div class="main">
     <div id="sidebar"></div>
-    <div id="map"></div>
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+    <div id="calendar-container"></div>
   </div>
 </div>
 
@@ -269,222 +405,239 @@ function setupRealtime() {
 
 const TYPE_COLORS = { beach:'#38bdf8', mountain:'#4ade80', city:'#c084fc', ryokan:'#fbbf24', cultural:'#fb923c', travel:'#94a3b8', scenic:'#2dd4bf' };
 
+// Base colors for map pins
+const BASE_COLORS = {
+  'tokyo':    '#c084fc',
+  'fuji':     '#2dd4bf',
+  'izu':      '#38bdf8',
+  'hakone':   '#fbbf24',
+  'matsumoto':'#fb923c',
+  'takayama': '#fb923c',
+  'karuizawa':'#4ade80',
+  'tokyo2':   '#c084fc',
+  'narita':   '#94a3b8',
+};
+
+const DAY_ICONS = {
+  city: '🏙️', scenic: '🗻', mountain: '⛰️', beach: '🏖️', ryokan: '♨️', cultural: '⛩️', travel: '✈️'
+};
+
 // ─── ITINERARY DATA ───
 const DAYS = [
   {
-    day:1, date:'Thu, Aug 7', title:'Arrive in Tokyo', subtitle:'Narita Express \u2192 Shinjuku', coords:[35.689,139.700], type:'city',
-    driving:'No driving \u2014 Narita Express train to Shinjuku (~1h)', temp:'33\u00B0C',
+    day:1, date:'Thu, Aug 7', title:'Arrive in Tokyo', subtitle:'Narita Express → Shinjuku', coords:[35.6895,139.6823], type:'city', base:'tokyo',
+    driving:'No driving — Narita Express train to Shinjuku (~1h)', temp:'33°C',
     drives:[
       'No car today. Take Narita Express (N\'EX) train to Shinjuku: ~1h, ~3,000 yen/person.',
       'Buy tickets at JR counter in airport arrivals. Runs until ~9:45PM.',
-      'No car needed in Tokyo \u2014 picking up rental on Day 3 when leaving for Fuji.',
+      'No car needed in Tokyo — picking up rental on Day 3 when leaving for Fuji.',
     ],
     activities:[
-      '6:30PM \u2014 Land at Narita (EgyptAir from Cairo). Immigration + customs ~45-60 min',
-      '~7:30PM \u2014 Buy Narita Express tickets at JR counter. Board N\'EX to Shinjuku (~1h, direct)',
-      '~8:30PM \u2014 Arrive Shinjuku. Walk or taxi to hotel, check in, drop bags',
-      '9:00PM \u2014 Night walk: Omoide Yokocho (Memory Lane) \u2014 tiny yakitori bars under the train tracks, smoke and neon',
-      'Walk through Kabukicho \u2014 Tokyo\'s neon canyon',
+      '6:30PM — Land at Narita (EgyptAir from Cairo). Immigration + customs ~45-60 min',
+      '~7:30PM — Buy Narita Express tickets at JR counter. Board N\'EX to Shinjuku (~1h, direct)',
+      '~8:30PM — Arrive Shinjuku. Walk or taxi to hotel, check in, drop bags',
+      '9:00PM — Night walk: Omoide Yokocho (Memory Lane) — tiny yakitori bars under the train tracks, smoke and neon',
+      'Walk through Kabukicho — Tokyo\'s neon canyon',
     ],
     food:[
-      'Omoide Yokocho yakitori \u2014 grilled skewers at a counter, cold beer, locals elbow to elbow',
-      'Fuunji (Shinjuku) \u2014 legendary tsukemen ramen, expect a short queue',
-      'Late-night konbini run \u2014 onigiri, egg sandwiches, Strong Zero. You\'ll be jet-lagged anyway',
+      'Omoide Yokocho yakitori — grilled skewers at a counter, cold beer, locals elbow to elbow',
+      'Fuunji (Shinjuku) — legendary tsukemen ramen, expect a short queue',
+      'Late-night konbini run — onigiri, egg sandwiches, Strong Zero. You\'ll be jet-lagged anyway',
     ],
     photo:[
-      'Omoide Yokocho at night \u2014 THE best moody night photography in Tokyo. Smoke, red lanterns, narrow alleys',
-      'Kabukicho neon layers \u2014 shoot looking up, deep blue sky 20-30min after sunset',
+      'Omoide Yokocho at night — THE best moody night photography in Tokyo. Smoke, red lanterns, narrow alleys',
+      'Kabukicho neon layers — shoot looking up, deep blue sky 20-30min after sunset',
       'Set Classic Negative film sim for warm moody tones',
     ],
     accom:{ name:'APA Hotel Nishishinjuku Gochome Tower \u2705', price:146, type:'BOOKED. Conf #6006074195. Check-in 3PM, checkout 10AM. Onsen, pool, 100m from subway. No breakfast (eat out).' },
     wiki:'Shinjuku'
   },
   {
-    day:2, date:'Fri, Aug 8', title:'Full Day Tokyo', subtitle:'Temples, Markets, Neon', coords:[35.689,139.700], type:'city',
-    driving:'No driving \u2014 walk + train all day', temp:'33\u00B0C',
+    day:2, date:'Fri, Aug 8', title:'Full Day Tokyo', subtitle:'Temples, Markets, Neon', coords:[35.6895,139.6823], type:'city', base:'tokyo',
+    driving:'No driving — walk + train all day', temp:'33°C',
     drives:[
       'No car. Use Suica/Pasmo IC card for trains.',
     ],
     activities:[
-      '5:00AM \u2014 Senso-ji Temple at dawn. Virtually empty, golden light through Kaminarimon Gate',
-      '7:30AM \u2014 Breakfast at street vendors near Senso-ji (melon pan, taiyaki)',
-      '9:00AM \u2014 Tsukiji Outer Market \u2014 sushi breakfast, tamago, uni skewers. Graze your way through',
-      '10:30AM \u2014 TeamLab Borderless (Azabudai Hills) \u2014 immersive digital art, 2-3h. BOOK TICKETS AHEAD',
-      '1:00PM \u2014 Lunch in Harajuku. Walk Takeshita Street + Omotesando',
-      '2:30PM \u2014 Meiji Shrine \u2014 forested shrine, light through torii gates. 30-45 min',
-      '3:30PM \u2014 Shibuya Sky observation deck \u2014 BOOK TICKETS AHEAD. 1h',
-      '5:30PM \u2014 Golden hour at Shibuya Crossing',
-      '6:30PM \u2014 Shinjuku: Kabukicho + Golden Gai',
-      '9:00PM \u2014 Night photography: Tokyo Tower from Shiba Park',
+      '5:00AM — Senso-ji Temple at dawn. Virtually empty, golden light through Kaminarimon Gate',
+      '7:30AM — Breakfast at street vendors near Senso-ji (melon pan, taiyaki)',
+      '9:00AM — Tsukiji Outer Market — sushi breakfast, tamago, uni skewers. Graze your way through',
+      '10:30AM — TeamLab Borderless (Azabudai Hills) — immersive digital art, 2-3h. BOOK TICKETS AHEAD',
+      '1:00PM — Lunch in Harajuku. Walk Takeshita Street + Omotesando',
+      '2:30PM — Meiji Shrine — forested shrine, light through torii gates. 30-45 min',
+      '3:30PM — Shibuya Sky observation deck — BOOK TICKETS AHEAD. 1h',
+      '5:30PM — Golden hour at Shibuya Crossing',
+      '6:30PM — Shinjuku: Kabukicho + Golden Gai',
+      '9:00PM — Night photography: Tokyo Tower from Shiba Park',
     ],
     food:[
-      'Tsukiji Outer Market sushi breakfast \u2014 budget ~2,000-3,000 yen for incredible quality',
-      'Afuri Ramen (Harajuku) \u2014 yuzu shio ramen, light and refreshing',
+      'Tsukiji Outer Market sushi breakfast — budget ~2,000-3,000 yen for incredible quality',
+      'Afuri Ramen (Harajuku) — yuzu shio ramen, light and refreshing',
       'Dinner: Gonpachi Nishi-Azabu (the "Kill Bill" restaurant) or Toraji yakiniku in Shinjuku',
     ],
     photo:[
-      'Senso-ji at dawn (5AM) \u2014 empty temple, warm golden light. Priority shot',
-      'Shibuya Crossing at golden hour (5:30PM) \u2014 from Starbucks above or street level',
+      'Senso-ji at dawn (5AM) — empty temple, warm golden light. Priority shot',
+      'Shibuya Crossing at golden hour (5:30PM) — from Starbucks above or street level',
       'Tokyo Tower from Shiba Park at blue hour',
-      'Golden Gai \u2014 tiny bar alleys glowing at night',
+      'Golden Gai — tiny bar alleys glowing at night',
     ],
     accom:{ name:'APA Hotel Nishishinjuku Gochome Tower \u2705', price:146, type:'BOOKED. Night 2 of 2. Same hotel.' },
     wiki:'Shinjuku'
   },
   {
-    day:3, date:'Sat, Aug 9', title:'Pick Up Car + Drive to Fuji', subtitle:'Haneda \u2192 Vacilando Cottage', coords:[35.511,138.763], type:'scenic',
-    driving:'Train to Haneda, pick up car, drive to Kawaguchiko: ~1h 45min', temp:'29\u00B0C (lake elevation)',
+    day:3, date:'Sat, Aug 9', title:'Pick Up Car + Drive to Fuji', subtitle:'Haneda → Vacilando Cottage', coords:[35.4628,138.7182], type:'scenic', base:'fuji',
+    driving:'Train to Haneda, pick up car, drive to Kawaguchiko: ~1h 45min', temp:'29°C (lake elevation)',
     drives:[
-      'Hotel \u2192 Haneda Airport T1: ~30-40 min by train (Oedo line to Daimon, then monorail)',
-      'Haneda T1 counter \u2192 Times Haneda store: shuttle bus 20-40 min. Res #202600770652.',
-      'Haneda \u2192 Kawaguchiko: ~1h 45min (100km, straight onto expressway)',
-      'Kawaguchiko \u2192 Chureito Pagoda: ~10-15 min (10km)',
-      'Chureito Pagoda \u2192 Vacilando Cottage: ~15 min',
+      'Hotel → Haneda Airport T1: ~30-40 min by train (Oedo line to Daimon, then monorail)',
+      'Haneda T1 counter → Times Haneda store: shuttle bus 20-40 min. Res #202600770652.',
+      'Haneda → Kawaguchiko: ~1h 45min (100km, straight onto expressway)',
+      'Kawaguchiko → Chureito Pagoda: ~10-15 min (10km)',
+      'Chureito Pagoda → Vacilando Cottage: ~15 min',
     ],
     activities:[
-      '7:00AM \u2014 Any Tokyo spots you missed: Akihabara, Ueno Park, or Yanaka old-town vibes',
-      '9:00AM \u2014 Train to Haneda Airport T1 (~30-40 min). Go to Times counter, shuttle to store (20-40 min)',
-      '10:30AM \u2014 Pick up car at Times Haneda. Have IDP + passport + booking ref 202600770652 ready',
-      '~10:45AM \u2014 Depart Haneda for Kawaguchiko (~1h 45min)',
-      '~12:30PM \u2014 Arrive Kawaguchiko area',
-      '1:00PM \u2014 Check into Vacilando Cottage (check-in from 10AM)',
-      '1:30PM \u2014 Lunch: Houtou Fudou \u2014 Yamanashi\'s signature hoto noodles (thick flat noodles in miso-pumpkin broth)',
-      '3:00PM \u2014 Chureito Pagoda \u2014 398 steps up. Mt Fuji framed behind the iconic pagoda. Free parking at base. 1-1.5h',
-      '5:00PM \u2014 Drive to north shore of Lake Kawaguchiko',
-      '6:00PM \u2014 Sunset from north shore (Ubuyagasaki or Oishi Park). If lake is calm = "Sakasa Fuji" inverted reflection',
+      '7:00AM — Any Tokyo spots you missed: Akihabara, Ueno Park, or Yanaka old-town vibes',
+      '9:00AM — Train to Haneda Airport T1 (~30-40 min). Go to Times counter, shuttle to store (20-40 min)',
+      '10:30AM — Pick up car at Times Haneda. Have IDP + passport + booking ref 202600770652 ready',
+      '~10:45AM — Depart Haneda for Kawaguchiko (~1h 45min)',
+      '~12:30PM — Arrive Kawaguchiko area',
+      '1:00PM — Check into Vacilando Cottage (check-in from 10AM)',
+      '1:30PM — Lunch: Houtou Fudou — Yamanashi\'s signature hoto noodles (thick flat noodles in miso-pumpkin broth)',
+      '3:00PM — Chureito Pagoda — 398 steps up. Mt Fuji framed behind the iconic pagoda. Free parking at base. 1-1.5h',
+      '5:00PM — Drive to north shore of Lake Kawaguchiko',
+      '6:00PM — Sunset from north shore (Ubuyagasaki or Oishi Park). If lake is calm = "Sakasa Fuji" inverted reflection',
     ],
     food:[
-      'Houtou Fudou \u2014 thick flat noodles in miso-pumpkin broth. THE Yamanashi dish',
+      'Houtou Fudou — thick flat noodles in miso-pumpkin broth. THE Yamanashi dish',
       'Evening: cook at the cottage (kitchen equipped with pots, pans, oil, salt, pepper) or local izakaya',
     ],
     photo:[
-      'Chureito Pagoda with Mt Fuji \u2014 the iconic shot. Afternoon light works well',
-      'Lake Kawaguchiko north shore sunset \u2014 inverted Fuji reflection if calm water',
-      'Cottage + surroundings \u2014 rustic wood-burning stove, mountain setting',
+      'Chureito Pagoda with Mt Fuji — the iconic shot. Afternoon light works well',
+      'Lake Kawaguchiko north shore sunset — inverted Fuji reflection if calm water',
+      'Cottage + surroundings — rustic wood-burning stove, mountain setting',
     ],
     accom:{ name:'Vacilando Cottage \u2705', price:354, type:'BOOKED. Conf HM8TNSMZ92. CA$1,062.12 total. Check-in 10AM, checkout 2PM. Wood stove, BBQ, kitchen.' },
     wiki:'Lake_Kawaguchi'
   },
   {
-    day:4, date:'Sun, Aug 10', title:'Mt Fuji Day', subtitle:'Sunrise, Ropeway, Lake', coords:[35.511,138.763], type:'scenic',
-    driving:'Local drives only around Kawaguchiko', temp:'29\u00B0C',
+    day:4, date:'Sun, Aug 10', title:'Mt Fuji Day', subtitle:'Sunrise, Ropeway, Lake', coords:[35.4628,138.7182], type:'scenic', base:'fuji',
+    driving:'Local drives only around Kawaguchiko', temp:'29°C',
     drives:[
-      'Cottage \u2192 Ubuyagasaki (sunrise): ~10-15 min',
-      'Ubuyagasaki \u2192 Ropeway station: ~10 min',
-      'Ropeway \u2192 Oishi Park: ~10 min',
+      'Cottage → Ubuyagasaki (sunrise): ~10-15 min',
+      'Ubuyagasaki → Ropeway station: ~10 min',
+      'Ropeway → Oishi Park: ~10 min',
       'All local, under 15 min each way',
     ],
     activities:[
-      '4:45AM \u2014 Drive to Ubuyagasaki / north shore for SUNRISE over Mt Fuji. Calm morning water, mist, Fuji lit pink. Priority #1 for the X-H2S',
-      '6:30AM \u2014 Return to cottage for breakfast',
-      '9:00AM \u2014 Mt Fuji Panoramic Ropeway (Kachi Kachi Yama) \u2014 summit of Mt Tenjo, panoramic views. ~7 min ride. 1-1.5h total',
-      '10:30AM \u2014 Rent bikes on the north shore of Lake Kawaguchiko \u2014 ~2h relaxed ride past parks, shrines, museums',
-      '1:00PM \u2014 Lunch: Fuji Tempura Idaten or Gyukatsu Koshūya (beef cutlet)',
-      '2:30PM \u2014 Kawaguchiko Music Forest (Orgel no Mori) \u2014 European gardens with Fuji backdrop. 1-1.5h',
-      '4:00PM \u2014 Oishi Park \u2014 lavender fields (possible late blooms) with Fuji behind. Wide-angle paradise',
-      '6:00PM \u2014 BBQ at the cottage with electric grill + local ingredients',
-      '8:00PM \u2014 Stargazing from the cottage (rural area = dark skies)',
+      '4:45AM — Drive to Ubuyagasaki / north shore for SUNRISE over Mt Fuji. Calm morning water, mist, Fuji lit pink. Priority #1 for the X-H2S',
+      '6:30AM — Return to cottage for breakfast',
+      '9:00AM — Mt Fuji Panoramic Ropeway (Kachi Kachi Yama) — summit of Mt Tenjo, panoramic views. ~7 min ride. 1-1.5h total',
+      '10:30AM — Rent bikes on the north shore of Lake Kawaguchiko — ~2h relaxed ride past parks, shrines, museums',
+      '1:00PM — Lunch: Fuji Tempura Idaten or Gyukatsu Koshūya (beef cutlet)',
+      '2:30PM — Kawaguchiko Music Forest (Orgel no Mori) — European gardens with Fuji backdrop. 1-1.5h',
+      '4:00PM — Oishi Park — lavender fields (possible late blooms) with Fuji behind. Wide-angle paradise',
+      '6:00PM — BBQ at the cottage with electric grill + local ingredients',
+      '8:00PM — Stargazing from the cottage (rural area = dark skies)',
     ],
     food:[
-      'Fuji Tempura Idaten \u2014 tempura with shrimp, soft-shell crab, seasonal veg',
-      'Gyukatsu Koshūya \u2014 crispy beef cutlet',
+      'Fuji Tempura Idaten — tempura with shrimp, soft-shell crab, seasonal veg',
+      'Gyukatsu Koshūya — crispy beef cutlet',
       'Evening BBQ at the cottage with the electric grill',
     ],
     photo:[
-      'Mt Fuji sunrise reflection from north shore (4:45AM) \u2014 #1 PRIORITY SHOT of the whole trip',
-      'Ropeway summit \u2014 panoramic Fuji + lake',
-      'Oishi Park \u2014 lavender fields with Fuji, late afternoon golden light',
-      'Cottage night \u2014 dark skies, stars, Fuji silhouette',
+      'Mt Fuji sunrise reflection from north shore (4:45AM) — #1 PRIORITY SHOT of the whole trip',
+      'Ropeway summit — panoramic Fuji + lake',
+      'Oishi Park — lavender fields with Fuji, late afternoon golden light',
+      'Cottage night — dark skies, stars, Fuji silhouette',
     ],
     accom:{ name:'Vacilando Cottage \u2705', price:354, type:'BOOKED. Night 2 of 3. Same cottage.' },
     wiki:'Mount_Fuji'
   },
   {
-    day:5, date:'Mon, Aug 11', title:'Fuji Exploration', subtitle:'Lakes, Caves, 5th Station', coords:[35.475,138.680], type:'mountain',
-    driving:'Local drives: Lake Saiko, Aokigahara, 5th Station', temp:'22-29\u00B0C',
+    day:5, date:'Mon, Aug 11', title:'Fuji Exploration', subtitle:'Lakes, Caves, 5th Station', coords:[35.4580,138.7100], type:'mountain', base:'fuji',
+    driving:'Local drives: Lake Saiko, Aokigahara, 5th Station', temp:'22-29°C',
     drives:[
-      'Cottage \u2192 Lake Saiko / Iyashi no Sato: ~12 min (10km)',
-      'Iyashi no Sato \u2192 Aokigahara / Ice Cave: ~10 min (5km)',
-      'Aokigahara \u2192 Fuji Subaru Line 5th Station: ~30-40 min (30km, mountain toll road, 2,100 yen). May be reservation-only or bus-only in peak summer \u2014 check ahead!',
-      '5th Station \u2192 Cottage: ~40 min',
+      'Cottage → Lake Saiko / Iyashi no Sato: ~12 min (10km)',
+      'Iyashi no Sato → Aokigahara / Ice Cave: ~10 min (5km)',
+      'Aokigahara → Fuji Subaru Line 5th Station: ~30-40 min (30km, mountain toll road, 2,100 yen). May be reservation-only or bus-only in peak summer — check ahead!',
+      '5th Station → Cottage: ~40 min',
     ],
     activities:[
-      '8:00AM \u2014 Lake Saiko + Iyashi no Sato Nenba \u2014 reconstructed thatched-roof village with craft shops and Fuji views. Fewer crowds. 1-1.5h',
-      '10:00AM \u2014 Aokigahara Forest \u2014 "Sea of Trees." Walk the lava cave trails: Narusawa Ice Cave or Fugaku Wind Cave (15 min walks). Atmospheric, moody photography',
-      '12:00PM \u2014 Lunch at cottage or nearby',
-      '1:00PM \u2014 Fuji Subaru Line 5th Station \u2014 drive up to 2,300m elevation. Walk around viewpoints, shops. Above the clouds on a clear day. 1-1.5h. Parking 1,000 yen',
-      '3:30PM \u2014 Return to cottage, pack, do laundry',
-      '5:00PM \u2014 Final golden hour shoot at the lake',
-      '6:30PM \u2014 Farewell dinner \u2014 splurge on kaiseki or yakiniku in Kawaguchiko',
+      '8:00AM — Lake Saiko + Iyashi no Sato Nenba — reconstructed thatched-roof village with craft shops and Fuji views. Fewer crowds. 1-1.5h',
+      '10:00AM — Aokigahara Forest — "Sea of Trees." Walk the lava cave trails: Narusawa Ice Cave or Fugaku Wind Cave (15 min walks). Atmospheric, moody photography',
+      '12:00PM — Lunch at cottage or nearby',
+      '1:00PM — Fuji Subaru Line 5th Station — drive up to 2,300m elevation. Walk around viewpoints, shops. Above the clouds on a clear day. 1-1.5h. Parking 1,000 yen',
+      '3:30PM — Return to cottage, pack, do laundry',
+      '5:00PM — Final golden hour shoot at the lake',
+      '6:30PM — Farewell dinner — splurge on kaiseki or yakiniku in Kawaguchiko',
     ],
     food:[
       'Café or restaurant near Iyashi no Sato',
-      'Highway rest stop on the way to/from 5th Station \u2014 Japanese SAs have surprisingly good food',
-      'Farewell Kawaguchiko dinner \u2014 kaiseki or yakiniku',
+      'Highway rest stop on the way to/from 5th Station — Japanese SAs have surprisingly good food',
+      'Farewell Kawaguchiko dinner — kaiseki or yakiniku',
     ],
     photo:[
-      'Iyashi no Sato thatched roofs with Fuji backdrop \u2014 less touristy than Shirakawa-go',
-      'Aokigahara Forest \u2014 moody, dense, atmospheric. Great for the X-H2S',
-      'Fuji 5th Station \u2014 above-the-clouds landscape if clear',
+      'Iyashi no Sato thatched roofs with Fuji backdrop — less touristy than Shirakawa-go',
+      'Aokigahara Forest — moody, dense, atmospheric. Great for the X-H2S',
+      'Fuji 5th Station — above-the-clouds landscape if clear',
       'Final lake sunset from cottage area',
     ],
     accom:{ name:'Vacilando Cottage \u2705', price:354, type:'BOOKED. Night 3 of 3. Checkout tomorrow 2PM.' },
     wiki:'Aokigahara'
   },
   {
-    day:6, date:'Tue, Aug 12', title:'Drive to Izu Peninsula', subtitle:'Fuji \u2192 Shimoda Beaches', coords:[34.672,138.945], type:'beach',
-    driving:'Kawaguchiko \u2192 Shimoda: ~2.5-3h (winding Izu roads)', temp:'31\u00B0C',
+    day:6, date:'Tue, Aug 12', title:'Drive to Izu Peninsula', subtitle:'Fuji → Shimoda Beaches', coords:[34.6788,138.9362], type:'beach', base:'izu',
+    driving:'Kawaguchiko → Shimoda: ~2.5-3h (winding Izu roads)', temp:'31°C',
     drives:[
-      'Vacilando Cottage \u2192 Shimoda: ~2.5-3h (122km via Mishima, then south down coast on winding mountain/coastal roads)',
-      'No expressway for much of this route \u2014 scenic but slow. Budget the full 3h.',
+      'Vacilando Cottage → Shimoda: ~2.5-3h (122km via Mishima, then south down coast on winding mountain/coastal roads)',
+      'No expressway for much of this route — scenic but slow. Budget the full 3h.',
     ],
     activities:[
-      '5:00AM \u2014 Optional final sunrise shoot at the lake',
-      '8:00AM-1:00PM \u2014 Relaxed last morning at the cottage. Enjoy it',
-      '2:00PM \u2014 Check out Vacilando, depart for Izu',
-      '~4:30PM \u2014 Arrive Shimoda area. Check into accommodation',
-      '5:30PM \u2014 Shirahama Beach for sunset \u2014 white sand, turquoise water. Rim will love this',
-      '6:30PM \u2014 Dinner in Shimoda: kinmedai (golden-eye snapper) is THE local specialty',
-      '8:00PM \u2014 Walk Perry Road \u2014 stone-paved street with cafes along a willow-lined stream',
+      '5:00AM — Optional final sunrise shoot at the lake',
+      '8:00AM-1:00PM — Relaxed last morning at the cottage. Enjoy it',
+      '2:00PM — Check out Vacilando, depart for Izu',
+      '~4:30PM — Arrive Shimoda area. Check into accommodation',
+      '5:30PM — Shirahama Beach for sunset — white sand, turquoise water. Rim will love this',
+      '6:30PM — Dinner in Shimoda: kinmedai (golden-eye snapper) is THE local specialty',
+      '8:00PM — Walk Perry Road — stone-paved street with cafes along a willow-lined stream',
     ],
     food:[
-      'Kinmedai (golden-eye snapper) \u2014 simmered or grilled, Shimoda\'s signature dish',
+      'Kinmedai (golden-eye snapper) — simmered or grilled, Shimoda\'s signature dish',
       'Most ryokans/restaurants serve it. Try a local izakaya in Shimoda town',
     ],
     photo:[
-      'Shirahama Beach sunset \u2014 white sand glowing in golden light',
-      'Perry Road \u2014 charming stone-paved street with willows',
+      'Shirahama Beach sunset — white sand glowing in golden light',
+      'Perry Road — charming stone-paved street with willows',
       'Shimoda harbor at dusk',
     ],
     accom:{ name:'MAHANA Shitani \u2705', price:201, type:'PENDING. Conf HMHNC2HJMJ. Private house, free parking, kitchen, AC. 10min drive to beaches.' },
     wiki:'Shimoda,_Shizuoka'
   },
   {
-    day:7, date:'Wed, Aug 13', title:'Izu Beaches + Coast', subtitle:'Hirizo Beach + Jogasaki', coords:[34.632,138.888], type:'beach',
-    driving:'Local drives: Shimoda \u2192 Hirizo 35min, Hirizo \u2192 Jogasaki 1h 20min', temp:'30\u00B0C',
+    day:7, date:'Wed, Aug 13', title:'Izu Beaches + Coast', subtitle:'Hirizo Beach + Jogasaki', coords:[34.6720,138.9300], type:'beach', base:'izu',
+    driving:'Local drives: Shimoda → Hirizo 35min, Hirizo → Jogasaki 1h 20min', temp:'30°C',
     drives:[
-      'Shimoda \u2192 Shirahama Beach: ~10 min',
-      'Shirahama \u2192 Nakagi Port (Hirizo Beach boat): ~30-40 min (25km south, coastal road)',
-      'Nakagi Port \u2192 Jogasaki Coast: ~1h 20min (79km back up east coast via Ito)',
-      'Jogasaki \u2192 Shimoda: ~50 min (back south)',
+      'Shimoda → Shirahama Beach: ~10 min',
+      'Shirahama → Nakagi Port (Hirizo Beach boat): ~30-40 min (25km south, coastal road)',
+      'Nakagi Port → Jogasaki Coast: ~1h 20min (79km back up east coast via Ito)',
+      'Jogasaki → Shimoda: ~50 min (back south)',
     ],
     activities:[
-      '8:00AM \u2014 Shirahama Beach early before crowds (gets busy by 10AM). White sand, turquoise water',
-      '11:00AM \u2014 Drive to Nakagi Port for boat to Hirizo Beach \u2014 Japan\'s best snorkeling spot. Crystal clear, boat-access only (2 min ride, 1,500 yen). Bring snorkel gear, water, food (NO facilities). Wednesday = fewer crowds. 2-3h',
-      '2:30PM \u2014 Drive north to Jogasaki Coast (~1h)',
-      '3:30PM \u2014 Hike the Picnical Course trail: Kadowakizaki Suspension Bridge (23m long, 48m high), Cape Kadowaki Lighthouse, volcanic columnar joints. 1.5-2h',
-      '5:30PM \u2014 Golden hour on the cliffs \u2014 volcanic coastline + crashing waves in warm light',
-      '7:00PM \u2014 Dinner: Gorosaya in Shimoda for kinmedai, or fresh kaisen-don',
-      '8:00PM \u2014 Private onsen at accommodation',
+      '8:00AM — Shirahama Beach early before crowds (gets busy by 10AM). White sand, turquoise water',
+      '11:00AM — Drive to Nakagi Port for boat to Hirizo Beach — Japan\'s best snorkeling spot. Crystal clear, boat-access only (2 min ride, 1,500 yen). Bring snorkel gear, water, food (NO facilities). Wednesday = fewer crowds. 2-3h',
+      '2:30PM — Drive north to Jogasaki Coast (~1h)',
+      '3:30PM — Hike the Picnical Course trail: Kadowakizaki Suspension Bridge (23m long, 48m high), Cape Kadowaki Lighthouse, volcanic columnar joints. 1.5-2h',
+      '5:30PM — Golden hour on the cliffs — volcanic coastline + crashing waves in warm light',
+      '7:00PM — Dinner: Gorosaya in Shimoda for kinmedai, or fresh kaisen-don',
+      '8:00PM — Private onsen at accommodation',
     ],
     food:[
       'Beach picnic with konbini supplies at Hirizo',
-      'Gorosaya (Shimoda) \u2014 kinmedai specialist',
+      'Gorosaya (Shimoda) — kinmedai specialist',
       'Kaisen-don (seafood rice bowl) at a local spot',
     ],
     photo:[
-      'Hirizo Beach \u2014 crystal clear snorkeling water, boat-access exclusivity',
-      'Jogasaki Coast suspension bridge at golden hour (5:30PM) \u2014 PRIORITY SHOT. Dramatic cliffs, volcanic rock',
+      'Hirizo Beach — crystal clear snorkeling water, boat-access exclusivity',
+      'Jogasaki Coast suspension bridge at golden hour (5:30PM) — PRIORITY SHOT. Dramatic cliffs, volcanic rock',
       'Kadowaki Lighthouse with Izu Islands in background',
       'Volcanic columnar joints with waterfalls',
     ],
@@ -492,242 +645,242 @@ const DAYS = [
     wiki:'Izu_Peninsula'
   },
   {
-    day:8, date:'Thu, Aug 14', title:'Izu to Hakone', subtitle:'Beach Morning \u2192 Ryokan Evening', coords:[35.232,139.107], type:'ryokan',
-    driving:'Shimoda \u2192 Hakone: ~1h 35min (coastal road)', temp:'30\u00B0C',
+    day:8, date:'Thu, Aug 14', title:'Izu to Hakone', subtitle:'Beach Morning → Ryokan Evening', coords:[35.2424,139.0567], type:'ryokan', base:'hakone',
+    driving:'Shimoda → Hakone: ~1h 35min (coastal road)', temp:'30°C',
     drives:[
-      'Shimoda \u2192 Hakone: ~1h 35min (114km via scenic coastal Route 135 north)',
+      'Shimoda → Hakone: ~1h 35min (114km via scenic coastal Route 135 north)',
       'Optional detour through Atami (+20 min): old-school onsen town with ocean views',
-      'Within Hakone: Open-Air Museum \u2192 Owakudani \u2192 Lake Ashi, all within 20-30 min of each other',
+      'Within Hakone: Open-Air Museum → Owakudani → Lake Ashi, all within 20-30 min of each other',
     ],
     activities:[
-      '7:00AM \u2014 Early morning beach walk or swim at Shirahama',
-      '9:00AM \u2014 Pack up, check out',
-      '10:00AM \u2014 Depart via scenic coastal Route 135. Beautiful ocean views the whole way',
-      '~12:00PM \u2014 Arrive Hakone. Check in at ryokan',
-      '1:00PM \u2014 Lunch: Hakone Bakery & Table or local soba near Hakone-Yumoto',
-      '2:00PM \u2014 Hakone Open-Air Museum \u2014 outdoor sculpture garden, mountain backdrop. 1.5-2h. 1,600 yen',
-      '4:00PM \u2014 Owakudani volcanic valley \u2014 sulfurous fumes, bubbling pools. Buy kuro-tamago (black eggs, 5 for 500 yen). 30-45 min',
-      '5:30PM \u2014 Lake Ashi sunset. Mt Fuji visible on clear days',
-      '6:30PM \u2014 Hakone Shrine \u2014 cedar-lined path to the lakeside torii gate. Beautiful in evening light',
-      '7:30PM \u2014 Ryokan: soak in onsen \u2192 change to yukata \u2192 multi-course kaiseki dinner \u2192 soak again',
+      '7:00AM — Early morning beach walk or swim at Shirahama',
+      '9:00AM — Pack up, check out',
+      '10:00AM — Depart via scenic coastal Route 135. Beautiful ocean views the whole way',
+      '~12:00PM — Arrive Hakone. Check in at ryokan',
+      '1:00PM — Lunch: Hakone Bakery & Table or local soba near Hakone-Yumoto',
+      '2:00PM — Hakone Open-Air Museum — outdoor sculpture garden, mountain backdrop. 1.5-2h. 1,600 yen',
+      '4:00PM — Owakudani volcanic valley — sulfurous fumes, bubbling pools. Buy kuro-tamago (black eggs, 5 for 500 yen). 30-45 min',
+      '5:30PM — Lake Ashi sunset. Mt Fuji visible on clear days',
+      '6:30PM — Hakone Shrine — cedar-lined path to the lakeside torii gate. Beautiful in evening light',
+      '7:30PM — Ryokan: soak in onsen → change to yukata → multi-course kaiseki dinner → soak again',
     ],
     food:[
       'Hakone soba near Yumoto',
-      'Kuro-tamago at Owakudani \u2014 each adds 7 years to your life (allegedly)',
-      'Ryokan kaiseki dinner \u2014 seasonal multi-course masterpiece, usually included in stay',
+      'Kuro-tamago at Owakudani — each adds 7 years to your life (allegedly)',
+      'Ryokan kaiseki dinner — seasonal multi-course masterpiece, usually included in stay',
     ],
     photo:[
-      'Hakone Open-Air Museum \u2014 sculptures against mountains',
-      'Owakudani \u2014 dramatic volcanic steam landscape',
-      'Hakone Shrine torii gate at Lake Ashi sunset \u2014 PRIORITY SHOT',
-      'Ryokan kaiseki spread \u2014 food photography moment',
+      'Hakone Open-Air Museum — sculptures against mountains',
+      'Owakudani — dramatic volcanic steam landscape',
+      'Hakone Shrine torii gate at Lake Ashi sunset — PRIORITY SHOT',
+      'Ryokan kaiseki spread — food photography moment',
     ],
     accom:{ name:'Hakone Kowakien TEN-YU \u2705', price:890, type:'BOOKED. Expedia #73412759642251. Superior Room, private open-air bath, buffet dinner 7:30PM. Free cancel before Aug 11.' },
     wiki:'Hakone'
   },
   {
-    day:9, date:'Fri, Aug 15', title:'Drive to Matsumoto', subtitle:'Hakone \u2192 Japanese Alps', coords:[36.238,137.972], type:'cultural',
-    driving:'Hakone \u2192 Matsumoto: ~2h 40min (expressway)', temp:'28\u00B0C',
+    day:9, date:'Fri, Aug 15', title:'Drive to Matsumoto', subtitle:'Hakone → Japanese Alps', coords:[36.2305,137.9688], type:'cultural', base:'matsumoto',
+    driving:'Hakone → Matsumoto: ~2h 40min (expressway)', temp:'28°C',
     drives:[
-      'Hakone \u2192 Matsumoto: ~2h 40min-3h (180km via Tomei + Chuo Expressway). Traffic near Gotemba can add time.',
-      'Scenic mountain driving. Stop at a highway SA for lunch \u2014 Japanese rest stops have great food.',
+      'Hakone → Matsumoto: ~2h 40min-3h (180km via Tomei + Chuo Expressway). Traffic near Gotemba can add time.',
+      'Scenic mountain driving. Stop at a highway SA for lunch — Japanese rest stops have great food.',
     ],
     activities:[
-      '6:00AM \u2014 Early onsen soak before checkout',
-      '7:00AM \u2014 Ryokan breakfast (elaborate Japanese spread, included)',
-      '8:00AM \u2014 Quick stop: Amazake Chaya \u2014 400-year-old teahouse on Old Tokaido Road. Sweet rice drink + mochi',
-      '9:00AM \u2014 Depart for Matsumoto',
-      '~12:30PM \u2014 Arrive Matsumoto. Check in',
-      '1:00PM \u2014 Lunch: Kobayashi Soba (est. 1889, handmade soba) or Takagi for soba + horse sashimi',
-      '2:30PM \u2014 Matsumoto Castle \u2014 Japan\'s oldest original castle (1593). Black "Crow Castle" in moat. Tour interior (steep stairs, 6 floors). 1.5-2h. 700 yen',
-      '4:30PM \u2014 Walk Nakamachi Street \u2014 preserved merchant district, black-and-white kura warehouses. Great street photography',
-      '5:00PM \u2014 Nawate-dori (Frog Street) \u2014 quirky shopping street along the river',
-      '6:00PM \u2014 Matsumoto Castle at sunset \u2014 illuminated until 10PM, moat reflections spectacular',
-      '7:00PM \u2014 Dinner: izakaya for basashi (horse sashimi, Nagano specialty) + local sake',
-      '8:30PM \u2014 Night photography at the illuminated castle (bring tripod)',
+      '6:00AM — Early onsen soak before checkout',
+      '7:00AM — Ryokan breakfast (elaborate Japanese spread, included)',
+      '8:00AM — Quick stop: Amazake Chaya — 400-year-old teahouse on Old Tokaido Road. Sweet rice drink + mochi',
+      '9:00AM — Depart for Matsumoto',
+      '~12:30PM — Arrive Matsumoto. Check in',
+      '1:00PM — Lunch: Kobayashi Soba (est. 1889, handmade soba) or Takagi for soba + horse sashimi',
+      '2:30PM — Matsumoto Castle — Japan\'s oldest original castle (1593). Black "Crow Castle" in moat. Tour interior (steep stairs, 6 floors). 1.5-2h. 700 yen',
+      '4:30PM — Walk Nakamachi Street — preserved merchant district, black-and-white kura warehouses. Great street photography',
+      '5:00PM — Nawate-dori (Frog Street) — quirky shopping street along the river',
+      '6:00PM — Matsumoto Castle at sunset — illuminated until 10PM, moat reflections spectacular',
+      '7:00PM — Dinner: izakaya for basashi (horse sashimi, Nagano specialty) + local sake',
+      '8:30PM — Night photography at the illuminated castle (bring tripod)',
     ],
     food:[
-      'Kobayashi Soba (est. 1889) \u2014 handmade buckwheat noodles, 130+ years running',
-      'Basashi (horse sashimi) \u2014 Nagano specialty, don\'t knock it',
+      'Kobayashi Soba (est. 1889) — handmade buckwheat noodles, 130+ years running',
+      'Basashi (horse sashimi) — Nagano specialty, don\'t knock it',
       'Local Shinshu sake at an izakaya',
     ],
     photo:[
-      'Matsumoto Castle night illumination with moat reflection \u2014 PRIORITY SHOT. Tripod essential',
-      'Nakamachi Street \u2014 afternoon light on kura warehouses',
-      'Castle moat at sunset \u2014 black castle, golden sky, mirror water',
+      'Matsumoto Castle night illumination with moat reflection — PRIORITY SHOT. Tripod essential',
+      'Nakamachi Street — afternoon light on kura warehouses',
+      'Castle moat at sunset — black castle, golden sky, mirror water',
     ],
     accom:{ name:'Dormy Inn Matsumoto \u2705', price:269, type:'BOOKED. Conf #6053078780. Onsen (indoor+outdoor), free late-night ramen 9:30-11PM. 15min walk to castle.' },
     wiki:'Matsumoto_Castle'
   },
   {
-    day:10, date:'Sat, Aug 16', title:'Day Trip: Kamikochi', subtitle:'Alpine Valley Hike', coords:[36.248,137.635], type:'mountain',
-    driving:'Matsumoto \u2192 Sawando 40-50min + shuttle bus 30min', temp:'22\u00B0C (1,500m)',
+    day:10, date:'Sat, Aug 16', title:'Day Trip: Kamikochi', subtitle:'Alpine Valley Hike', coords:[36.2480,137.6350], type:'mountain', base:'matsumoto',
+    driving:'Matsumoto → Sawando 40-50min + shuttle bus 30min', temp:'22°C (1,500m)',
     drives:[
-      'Matsumoto \u2192 Sawando Bus Terminal: ~40-50 min (35km, Route 158, narrow mountain road with tunnels)',
-      'Sawando \u2192 Kamikochi: ~30 min SHUTTLE BUS (no private cars allowed beyond Sawando)',
-      'BOOK BUS IN ADVANCE on Alpico website \u2014 reservations REQUIRED since 2025. ~2,000 yen round trip',
+      'Matsumoto → Sawando Bus Terminal: ~40-50 min (35km, Route 158, narrow mountain road with tunnels)',
+      'Sawando → Kamikochi: ~30 min SHUTTLE BUS (no private cars allowed beyond Sawando)',
+      'BOOK BUS IN ADVANCE on Alpico website — reservations REQUIRED since 2025. ~2,000 yen round trip',
       'Parking at Sawando: ~600 yen/day',
       'Same route back in afternoon. Total driving: ~1h 40min round trip + 1h bus round trip',
     ],
     activities:[
-      '6:00AM \u2014 Depart Matsumoto, drive to Sawando Bus Terminal (~45 min)',
-      '6:45AM \u2014 Shuttle bus to Kamikochi (~30 min). BOOK IN ADVANCE on Alpico website',
-      '7:30AM \u2014 Kappa Bridge \u2014 iconic suspension bridge over crystal-clear turquoise Azusa River. Northern Alps behind. Morning light is magic',
-      '7:45AM \u2014 Walk upstream to Myojin Pond (~5km, 1-1.5h). Flat trail through primeval forest',
-      '9:15AM \u2014 Myojin Pond + Hotaka Shrine \u2014 still pond reflecting Hotaka peaks. 300 yen. One of Japan\'s most famous mountain views',
-      '10:00AM \u2014 Walk back to Kappa Bridge',
-      '11:30AM \u2014 Lunch near Kappa Bridge: Kamikochi Imperial Hotel (curry/sandwiches) or simpler options',
-      '12:30PM \u2014 Walk downstream to Taisho Pond (~3.5km, 1h). Dead trees in misty water = eerie, beautiful',
-      '2:00PM \u2014 Catch bus back from Taisho Pond stop',
-      '4:00PM \u2014 Back in Matsumoto. Rest, shower',
-      '6:00PM \u2014 Dinner: Marushuu for soba, or izakaya for Shinshu salmon + craft beer',
-      '8:00PM \u2014 Final castle night walk',
+      '6:00AM — Depart Matsumoto, drive to Sawando Bus Terminal (~45 min)',
+      '6:45AM — Shuttle bus to Kamikochi (~30 min). BOOK IN ADVANCE on Alpico website',
+      '7:30AM — Kappa Bridge — iconic suspension bridge over crystal-clear turquoise Azusa River. Northern Alps behind. Morning light is magic',
+      '7:45AM — Walk upstream to Myojin Pond (~5km, 1-1.5h). Flat trail through primeval forest',
+      '9:15AM — Myojin Pond + Hotaka Shrine — still pond reflecting Hotaka peaks. 300 yen. One of Japan\'s most famous mountain views',
+      '10:00AM — Walk back to Kappa Bridge',
+      '11:30AM — Lunch near Kappa Bridge: Kamikochi Imperial Hotel (curry/sandwiches) or simpler options',
+      '12:30PM — Walk downstream to Taisho Pond (~3.5km, 1h). Dead trees in misty water = eerie, beautiful',
+      '2:00PM — Catch bus back from Taisho Pond stop',
+      '4:00PM — Back in Matsumoto. Rest, shower',
+      '6:00PM — Dinner: Marushuu for soba, or izakaya for Shinshu salmon + craft beer',
+      '8:00PM — Final castle night walk',
     ],
     food:[
-      'Kamikochi Imperial Hotel \u2014 splurge lunch (curry or sandwiches)',
+      'Kamikochi Imperial Hotel — splurge lunch (curry or sandwiches)',
       'Simpler options near Kappa Bridge bus terminal',
       'Dinner back in Matsumoto: Marushuu soba or local izakaya',
     ],
     photo:[
-      'Kappa Bridge + Azusa River at morning golden hour \u2014 PRIORITY SHOT. Turquoise water, Alps behind',
-      'Myojin Pond reflections \u2014 morning is best (calm water)',
-      'Taisho Pond dead trees \u2014 eerie and beautiful in afternoon light',
+      'Kappa Bridge + Azusa River at morning golden hour — PRIORITY SHOT. Turquoise water, Alps behind',
+      'Myojin Pond reflections — morning is best (calm water)',
+      'Taisho Pond dead trees — eerie and beautiful in afternoon light',
       'Forest trail light filtering through ancient trees',
     ],
     accom:{ name:'Dormy Inn Matsumoto \u2705', price:269, type:'BOOKED. Night 2 of 2. Same hotel.' },
     wiki:'Kamikochi'
   },
   {
-    day:11, date:'Sun, Aug 17', title:'Drive to Takayama', subtitle:'Matsumoto \u2192 Edo Old Town', coords:[36.146,137.252], type:'cultural',
-    driving:'Matsumoto \u2192 Takayama: ~1h (Route 158)', temp:'28\u00B0C',
+    day:11, date:'Sun, Aug 17', title:'Drive to Takayama', subtitle:'Matsumoto → Edo Old Town', coords:[36.1413,137.2524], type:'cultural', base:'takayama',
+    driving:'Matsumoto → Takayama: ~1h (Route 158)', temp:'28°C',
     drives:[
-      'Matsumoto \u2192 Takayama: ~1h (83km via Route 158, scenic mountain road through gorges and forests)',
+      'Matsumoto → Takayama: ~1h (83km via Route 158, scenic mountain road through gorges and forests)',
     ],
     activities:[
-      '8:00AM \u2014 Checkout, depart Matsumoto',
-      '~10:00AM \u2014 Arrive Takayama. Check in, drop bags',
-      '10:30AM \u2014 Walk Sanmachi Suji \u2014 three streets of preserved Edo-era merchant houses. Look for sugidama (cedar balls) outside sake breweries',
-      '11:00AM \u2014 Sake tasting: Funasaka or Harada brewery (100-300 yen/cup)',
-      '11:30AM \u2014 Street food: Jugemu for Hida beef sushi on rice crackers, Hida beef croquettes, steamed buns',
-      '12:30PM \u2014 Lunch: Sakaguchiya in Sanmachi Suji \u2014 Hida beef sushi, donburi, or steak',
-      '2:00PM \u2014 Takayama Jinya \u2014 preserved Edo-period magistrate\'s office. Tatami rooms, interrogation chamber. 1h. 440 yen',
-      '3:00PM \u2014 Walk along Miyagawa River, cross the red Nakabashi Bridge (most photographed in Takayama)',
-      '3:30PM \u2014 Hida Folk Village (Hida no Sato) \u2014 open-air museum with thatched-roof farmhouses. 1-1.5h. 700 yen',
-      '5:30PM \u2014 Golden hour in old town \u2014 wooden buildings and narrow lanes in warm light',
-      '6:30PM \u2014 Dinner: Suzuya for houba miso (Hida beef + veg on magnolia leaf over charcoal). THE Takayama meal',
-      '8:00PM \u2014 Evening walk \u2014 old town empties at night, beautifully quiet and atmospheric',
+      '8:00AM — Checkout, depart Matsumoto',
+      '~10:00AM — Arrive Takayama. Check in, drop bags',
+      '10:30AM — Walk Sanmachi Suji — three streets of preserved Edo-era merchant houses. Look for sugidama (cedar balls) outside sake breweries',
+      '11:00AM — Sake tasting: Funasaka or Harada brewery (100-300 yen/cup)',
+      '11:30AM — Street food: Jugemu for Hida beef sushi on rice crackers, Hida beef croquettes, steamed buns',
+      '12:30PM — Lunch: Sakaguchiya in Sanmachi Suji — Hida beef sushi, donburi, or steak',
+      '2:00PM — Takayama Jinya — preserved Edo-period magistrate\'s office. Tatami rooms, interrogation chamber. 1h. 440 yen',
+      '3:00PM — Walk along Miyagawa River, cross the red Nakabashi Bridge (most photographed in Takayama)',
+      '3:30PM — Hida Folk Village (Hida no Sato) — open-air museum with thatched-roof farmhouses. 1-1.5h. 700 yen',
+      '5:30PM — Golden hour in old town — wooden buildings and narrow lanes in warm light',
+      '6:30PM — Dinner: Suzuya for houba miso (Hida beef + veg on magnolia leaf over charcoal). THE Takayama meal',
+      '8:00PM — Evening walk — old town empties at night, beautifully quiet and atmospheric',
     ],
     food:[
-      'Hida beef sushi on rice crackers at Jugemu (~1,000 yen) \u2014 street food must',
-      'Hida beef croquettes \u2014 crispy, hot, cheap',
-      'Suzuya \u2014 houba miso (Hida beef + veg grilled on magnolia leaf with miso). THE Takayama meal',
+      'Hida beef sushi on rice crackers at Jugemu (~1,000 yen) — street food must',
+      'Hida beef croquettes — crispy, hot, cheap',
+      'Suzuya — houba miso (Hida beef + veg grilled on magnolia leaf with miso). THE Takayama meal',
       'Alternative: Hidagyu Maruaki for yakiniku (BBQ) with their own farm\'s Hida beef',
     ],
     photo:[
-      'Sanmachi Suji at golden hour \u2014 wooden Edo facades in warm light',
-      'Nakabashi Bridge \u2014 red bridge with river reflections',
-      'Hida Folk Village thatched roofs \u2014 afternoon light',
-      'Old town at night \u2014 empty streets, lanterns, moody atmosphere',
+      'Sanmachi Suji at golden hour — wooden Edo facades in warm light',
+      'Nakabashi Bridge — red bridge with river reflections',
+      'Hida Folk Village thatched roofs — afternoon light',
+      'Old town at night — empty streets, lanterns, moody atmosphere',
     ],
     accom:{ name:'Yado Ryokuen Airbnb \u2705', price:183, type:'BOOKED. Conf HMNXY258ZD. River view, free parking, kitchen, 2 double beds. 10min walk to morning market.' },
     wiki:'Takayama,_Gifu'
   },
   {
-    day:12, date:'Mon, Aug 18', title:'Morning Market + Shirakawa-go', subtitle:'Day Trip to UNESCO Village', coords:[36.258,136.906], type:'cultural',
-    driving:'Takayama \u2192 Shirakawa-go: ~45min each way', temp:'28\u00B0C',
+    day:12, date:'Mon, Aug 18', title:'Morning Market + Shirakawa-go', subtitle:'Day Trip to UNESCO Village', coords:[36.2578,136.9060], type:'cultural', base:'takayama',
+    driving:'Takayama → Shirakawa-go: ~45min each way', temp:'28°C',
     drives:[
-      'Takayama \u2192 Shirakawa-go: ~45-50 min (48km via Tokai-Hokuriku Expressway)',
+      'Takayama → Shirakawa-go: ~45-50 min (48km via Tokai-Hokuriku Expressway)',
       'Park at Seseragi Park (1,000 yen). Monday = manageable parking',
-      'Shirakawa-go \u2192 Takayama: ~45-50 min (same route back)',
+      'Shirakawa-go → Takayama: ~45-50 min (same route back)',
       'Total round trip: ~1h 30min driving',
     ],
     activities:[
-      '7:00AM \u2014 Miyagawa Morning Market (along the river) \u2014 ~40 stalls. Fresh peaches, pickles, gohei mochi, sarubobo dolls, coffee. BRING CASH',
-      '8:00AM \u2014 Quick walk to Jinya-mae Morning Market (smaller, more produce-focused)',
-      '9:30AM \u2014 Depart for Shirakawa-go',
-      '10:20AM \u2014 Arrive. Park at Seseragi Park. Cross suspension bridge into Ogimachi Village',
-      '10:30AM \u2014 Wander among gassho-zukuri (steep thatched-roof) farmhouses. Visit Wada House (300 yen) or Kanda House (400 yen)',
-      '11:30AM \u2014 Shiroyama Observation Deck \u2014 THE classic overview of entire village. 15-20 min uphill. Bird\'s-eye view of thatched roofs + mountains',
-      '12:30PM \u2014 Lunch in village: Irori for traditional hearth-side dining',
-      '1:30PM \u2014 Explore remaining houses',
-      '2:30PM \u2014 Depart back to Takayama',
-      '3:30PM \u2014 Back in Takayama. Rest or explore missed spots',
-      '6:30PM \u2014 Final dinner: Nakahashi Wakachiya for A5 Hida beef shabu-shabu',
+      '7:00AM — Miyagawa Morning Market (along the river) — ~40 stalls. Fresh peaches, pickles, gohei mochi, sarubobo dolls, coffee. BRING CASH',
+      '8:00AM — Quick walk to Jinya-mae Morning Market (smaller, more produce-focused)',
+      '9:30AM — Depart for Shirakawa-go',
+      '10:20AM — Arrive. Park at Seseragi Park. Cross suspension bridge into Ogimachi Village',
+      '10:30AM — Wander among gassho-zukuri (steep thatched-roof) farmhouses. Visit Wada House (300 yen) or Kanda House (400 yen)',
+      '11:30AM — Shiroyama Observation Deck — THE classic overview of entire village. 15-20 min uphill. Bird\'s-eye view of thatched roofs + mountains',
+      '12:30PM — Lunch in village: Irori for traditional hearth-side dining',
+      '1:30PM — Explore remaining houses',
+      '2:30PM — Depart back to Takayama',
+      '3:30PM — Back in Takayama. Rest or explore missed spots',
+      '6:30PM — Final dinner: Nakahashi Wakachiya for A5 Hida beef shabu-shabu',
     ],
     food:[
       'Morning market gohei mochi (grilled rice cake with sweet miso/walnut sauce)',
       'Fresh peaches from market stalls (August = peak season)',
-      'Irori in Shirakawa-go \u2014 traditional hearth-side dining',
+      'Irori in Shirakawa-go — traditional hearth-side dining',
       'Final Takayama dinner: A5 Hida beef shabu-shabu at Nakahashi Wakachiya',
     ],
     photo:[
-      'Shiroyama Observation Deck \u2014 PRIORITY SHOT. Classic bird\'s-eye view of the UNESCO village. Stand slightly lower-left for best composition',
-      'Village details \u2014 thatched roofs, summer flowers, water channels',
+      'Shiroyama Observation Deck — PRIORITY SHOT. Classic bird\'s-eye view of the UNESCO village. Stand slightly lower-left for best composition',
+      'Village details — thatched roofs, summer flowers, water channels',
       'Suspension bridge entrance to the village',
-      'Morning market stalls in Takayama \u2014 colorful produce, vendor portraits',
+      'Morning market stalls in Takayama — colorful produce, vendor portraits',
     ],
     accom:{ name:'Yado Ryokuen Airbnb \u2705', price:183, type:'BOOKED. Night 2 of 2. Same place.' },
     wiki:'Shirakawa-go'
   },
   {
-    day:13, date:'Tue, Aug 19', title:'Drive to Karuizawa', subtitle:'Takayama \u2192 Highland Retreat', coords:[36.349,138.597], type:'mountain',
-    driving:'Takayama \u2192 Karuizawa: ~2h 30min (via Matsumoto)', temp:'26\u00B0C (highland)',
+    day:13, date:'Tue, Aug 19', title:'Drive to Karuizawa', subtitle:'Takayama → Highland Retreat', coords:[36.3385,138.6135], type:'mountain', base:'karuizawa',
+    driving:'Takayama → Karuizawa: ~2h 30min (via Matsumoto)', temp:'26°C (highland)',
     drives:[
-      'Takayama \u2192 Karuizawa: ~2h 30-40min (197km via Matsumoto then Joshinetsu Expressway)',
+      'Takayama → Karuizawa: ~2h 30-40min (197km via Matsumoto then Joshinetsu Expressway)',
       'Route passes back through Matsumoto area, then east on expressway',
     ],
     activities:[
-      '8:00AM \u2014 Depart Takayama',
-      '~10:30AM \u2014 Arrive Karuizawa. Check in, drop bags',
-      '11:00AM \u2014 Kumobaike Pond (Swan Lake) \u2014 serene pond in dense forest, 1km walking path. 20-30 min',
-      '11:30AM \u2014 Old Karuizawa Ginza Street \u2014 browse cafes, bakeries, famous Karuizawa jam',
-      '12:00PM \u2014 Quick photo: St. Paul\'s Church \u2014 beautiful wooden church designed by Antonin Raymond',
-      '12:30PM \u2014 Lunch on Ginza Street \u2014 upscale cafes and bakeries',
-      '2:00PM \u2014 Karuizawa Prince Shopping Plaza \u2014 massive outlet mall at the foot of the mountains, if Rim wants to shop',
-      '4:00PM \u2014 Shiraito Falls \u2014 delicate 3m-high, 70m-wide curtain waterfall in the forest. ~20 min drive from town. Great for long exposure photography',
-      '6:00PM \u2014 Relax at accommodation. Karuizawa is 25\u00B0C vs 35\u00B0C in Tokyo \u2014 enjoy the cool mountain air',
-      '7:00PM \u2014 Dinner at a local restaurant. Try Nagano wagyu (Shinshu beef) or French-Japanese fusion (Karuizawa has upscale dining)',
+      '8:00AM — Depart Takayama',
+      '~10:30AM — Arrive Karuizawa. Check in, drop bags',
+      '11:00AM — Kumobaike Pond (Swan Lake) — serene pond in dense forest, 1km walking path. 20-30 min',
+      '11:30AM — Old Karuizawa Ginza Street — browse cafes, bakeries, famous Karuizawa jam',
+      '12:00PM — Quick photo: St. Paul\'s Church — beautiful wooden church designed by Antonin Raymond',
+      '12:30PM — Lunch on Ginza Street — upscale cafes and bakeries',
+      '2:00PM — Karuizawa Prince Shopping Plaza — massive outlet mall at the foot of the mountains, if Rim wants to shop',
+      '4:00PM — Shiraito Falls — delicate 3m-high, 70m-wide curtain waterfall in the forest. ~20 min drive from town. Great for long exposure photography',
+      '6:00PM — Relax at accommodation. Karuizawa is 25°C vs 35°C in Tokyo — enjoy the cool mountain air',
+      '7:00PM — Dinner at a local restaurant. Try Nagano wagyu (Shinshu beef) or French-Japanese fusion (Karuizawa has upscale dining)',
     ],
     food:[
-      'Karuizawa bakeries on Ginza Street \u2014 the town is known for European-style bakeries and cafes',
-      'Famous Karuizawa jam \u2014 buy as souvenirs',
+      'Karuizawa bakeries on Ginza Street — the town is known for European-style bakeries and cafes',
+      'Famous Karuizawa jam — buy as souvenirs',
       'Nagano wagyu (Shinshu beef) or French-Japanese fusion for dinner',
       'Nagano apples and local fruit from roadside stands',
     ],
     photo:[
-      'Kumobaike Pond \u2014 serene forest reflections, morning mist',
-      'St. Paul\'s Church \u2014 wooden architecture, forest setting',
-      'Shiraito Falls \u2014 long exposure with ND filter. Delicate water curtain',
-      'Tree-lined Karuizawa avenues \u2014 dappled light, European mountain town feel',
+      'Kumobaike Pond — serene forest reflections, morning mist',
+      'St. Paul\'s Church — wooden architecture, forest setting',
+      'Shiraito Falls — long exposure with ND filter. Delicate water curtain',
+      'Tree-lined Karuizawa avenues — dappled light, European mountain town feel',
     ],
     accom:{ name:'Comfort Inn Karuizawa \u2705', price:195, type:'BOOKED. Conf #6428231058. Queen Room, free parking. Checkout 10AM.' },
     wiki:'Karuizawa'
   },
   {
-    day:14, date:'Wed, Aug 20', title:'Back to Tokyo', subtitle:'Karuizawa \u2192 Tokyo Round 2', coords:[35.689,139.700], type:'city',
-    driving:'Karuizawa \u2192 Tokyo: ~2h (expressway)', temp:'33\u00B0C',
+    day:14, date:'Wed, Aug 20', title:'Back to Tokyo', subtitle:'Karuizawa → Tokyo Round 2', coords:[35.7340,139.8610], type:'city', base:'tokyo2',
+    driving:'Karuizawa → Tokyo: ~2h (expressway)', temp:'33°C',
     drives:[
-      'Karuizawa \u2192 Shinjuku/Shibuya: ~2h (180km via Joshinetsu + Kan-Etsu Expressway)',
+      'Karuizawa → Shinjuku/Shibuya: ~2h (180km via Joshinetsu + Kan-Etsu Expressway)',
       'Can be 2.5h+ with afternoon Tokyo traffic. Leave by 10AM to avoid it.',
     ],
     activities:[
-      '8:00AM \u2014 Morning walk around Karuizawa. Last breath of cool mountain air',
-      '9:00AM \u2014 Check out, depart for Tokyo',
-      '~11:00AM \u2014 Arrive Tokyo. Park car at hotel or nearby lot',
-      '11:30AM \u2014 Hit anything you missed on Day 2: Akihabara for electronics/anime, Ueno for museums, Yanaka for old-town vibes',
-      '1:00PM \u2014 Lunch: revisit a favorite from Day 2, or try somewhere new',
-      '2:00PM \u2014 Last-minute shopping: Don Quijote for souvenirs, Yodobashi Camera for electronics, Uniqlo for basics',
-      '4:00PM \u2014 Optional: revisit Shibuya or Shinjuku for any spots you want to reshoot',
-      '5:30PM \u2014 Golden hour round 2 \u2014 you know the spots now, nail the shots you missed',
-      '7:00PM \u2014 Dinner: splurge on something special. Omakase sushi, high-end yakiniku, or an izakaya crawl',
-      '9:00PM \u2014 Walk through the neon streets. Soak it in.',
+      '8:00AM — Morning walk around Karuizawa. Last breath of cool mountain air',
+      '9:00AM — Check out, depart for Tokyo',
+      '~11:00AM — Arrive Tokyo. Park car at hotel or nearby lot',
+      '11:30AM — Hit anything you missed on Day 2: Akihabara for electronics/anime, Ueno for museums, Yanaka for old-town vibes',
+      '1:00PM — Lunch: revisit a favorite from Day 2, or try somewhere new',
+      '2:00PM — Last-minute shopping: Don Quijote for souvenirs, Yodobashi Camera for electronics, Uniqlo for basics',
+      '4:00PM — Optional: revisit Shibuya or Shinjuku for any spots you want to reshoot',
+      '5:30PM — Golden hour round 2 — you know the spots now, nail the shots you missed',
+      '7:00PM — Dinner: splurge on something special. Omakase sushi, high-end yakiniku, or an izakaya crawl',
+      '9:00PM — Walk through the neon streets. Soak it in.',
     ],
     food:[
       'Revisit a Tsukiji favorite or try a new sushi spot',
-      'Dinner splurge \u2014 omakase sushi, high-end yakiniku, or izakaya crawl',
+      'Dinner splurge — omakase sushi, high-end yakiniku, or izakaya crawl',
     ],
     photo:[
-      'Reshoot any spots from Day 2 you want to nail better \u2014 you know the city now',
+      'Reshoot any spots from Day 2 you want to nail better — you know the city now',
       'Golden hour at Shibuya Crossing (round 2)',
       'Night neon in Shinjuku',
     ],
@@ -735,60 +888,60 @@ const DAYS = [
     wiki:'Shinjuku'
   },
   {
-    day:15, date:'Thu, Aug 21', title:'Last Full Day in Tokyo', subtitle:'Shopping, Food, Farewell', coords:[35.689,139.700], type:'city',
-    driving:'No driving \u2014 enjoy Tokyo on foot + train', temp:'33\u00B0C',
+    day:15, date:'Thu, Aug 21', title:'Last Full Day in Tokyo', subtitle:'Shopping, Food, Farewell', coords:[35.7380,139.8650], type:'city', base:'tokyo2',
+    driving:'No driving — enjoy Tokyo on foot + train', temp:'33°C',
     drives:[
       'No driving. Leave car parked. Last full day to explore freely.',
     ],
     activities:[
-      '9:00AM \u2014 Sleep in. No rush today',
-      '10:00AM \u2014 Breakfast at a kissaten or revisit Tsukiji Outer Market',
-      '11:00AM \u2014 Any neighborhoods you missed: Shimokitazawa (vintage shops, bohemian), Nakameguro (canal, cafes), or Asakusa (temples)',
-      '1:00PM \u2014 Lunch: try something you haven\'t had yet \u2014 tonkatsu, curry, okonomiyaki',
-      '2:30PM \u2014 Final shopping run: Don Quijote for omiyage (souvenirs), Kit-Kat varieties, Royce chocolate, Japanese snacks',
-      '4:00PM \u2014 Pack bags. Organize checked vs carry-on. Fill up gas at a station near hotel (for car return tomorrow)',
-      '6:00PM \u2014 FINAL dinner \u2014 make it count. Izakaya crawl in Golden Gai, or splurge omakase sushi',
-      '8:00PM \u2014 Last walk through Shinjuku or Shibuya at night. One more konbini run for plane snacks',
+      '9:00AM — Sleep in. No rush today',
+      '10:00AM — Breakfast at a kissaten or revisit Tsukiji Outer Market',
+      '11:00AM — Any neighborhoods you missed: Shimokitazawa (vintage shops, bohemian), Nakameguro (canal, cafes), or Asakusa (temples)',
+      '1:00PM — Lunch: try something you haven\'t had yet — tonkatsu, curry, okonomiyaki',
+      '2:30PM — Final shopping run: Don Quijote for omiyage (souvenirs), Kit-Kat varieties, Royce chocolate, Japanese snacks',
+      '4:00PM — Pack bags. Organize checked vs carry-on. Fill up gas at a station near hotel (for car return tomorrow)',
+      '6:00PM — FINAL dinner — make it count. Izakaya crawl in Golden Gai, or splurge omakase sushi',
+      '8:00PM — Last walk through Shinjuku or Shibuya at night. One more konbini run for plane snacks',
     ],
     food:[
       'Try something new: tonkatsu at Maisen (Omotesando), curry at CoCo Ichibanya, or okonomiyaki',
-      'FINAL dinner \u2014 Golden Gai izakaya crawl or omakase sushi. This is the one.',
+      'FINAL dinner — Golden Gai izakaya crawl or omakase sushi. This is the one.',
       'Konbini haul for the flight: onigiri, sandwiches, drinks, snacks',
     ],
     photo:[
-      'Any last shots you want \u2014 you know Tokyo now',
-      'Night neon in Shinjuku \u2014 last chance for real',
+      'Any last shots you want — you know Tokyo now',
+      'Night neon in Shinjuku — last chance for real',
     ],
     accom:{ name:'Cozy Vista 302 Airbnb \u2705', price:146, type:'BOOKED. Night 2 of 2. Same place.' },
     wiki:'Tokyo'
   },
   {
-    day:16, date:'Fri, Aug 22', title:'Fly Home', subtitle:'Tokyo \u2192 Narita \u2192 Calgary \u2192 Toronto', coords:[35.772,140.393], type:'travel',
-    driving:'Tokyo (Katsushika) \u2192 Narita Airport: ~45 min', temp:'\u2014',
+    day:16, date:'Fri, Aug 22', title:'Fly Home', subtitle:'Tokyo → Narita → Calgary → Toronto', coords:[35.7720,140.3930], type:'travel', base:'narita',
+    driving:'Tokyo (Katsushika) → Narita Airport: ~45 min', temp:'—',
     drives:[
-      'Cozy Vista (Katsushika) \u2192 Times Narita store: ~45 min (east Tokyo = close to Narita)',
+      'Cozy Vista (Katsushika) → Times Narita store: ~45 min (east Tokyo = close to Narita)',
       'Return car by 2:00PM. Times shuttle to Narita terminal.',
-      'Flight is 6:30PM \u2014 Times says return 3.5h before international flight = by 3:00PM. You\u2019re returning at 2:00PM so plenty of buffer.',
+      'Flight is 6:30PM — Times says return 3.5h before international flight = by 3:00PM. You\u2019re returning at 2:00PM so plenty of buffer.',
     ],
     activities:[
-      '9:00AM \u2014 Sleep in. Relaxed morning',
-      '10:00AM \u2014 Final konbini breakfast \u2014 one last onigiri, egg sandwich, Japanese coffee',
-      '11:00AM \u2014 Last-minute shopping or just relax',
-      '12:00PM \u2014 Last lunch in Tokyo \u2014 ramen, sushi, whatever you\'re craving',
-      '1:30PM \u2014 Depart for Narita Airport (~1h 10min from east Tokyo, ~1h 30min from Shinjuku)',
-      '~2:40PM \u2014 Arrive Narita. Return rental car at drop-off branch (allow 30-60 min)',
-      '3:30PM \u2014 Check in for WestJet WS 81. Browse duty-free: Japanese whisky, Kit-Kats, matcha products',
-      '6:30PM \u2014 Depart for Calgary. Arrive Toronto 9:15PM same day',
+      '9:00AM — Sleep in. Relaxed morning',
+      '10:00AM — Final konbini breakfast — one last onigiri, egg sandwich, Japanese coffee',
+      '11:00AM — Last-minute shopping or just relax',
+      '12:00PM — Last lunch in Tokyo — ramen, sushi, whatever you\'re craving',
+      '1:30PM — Depart for Narita Airport (~1h 10min from east Tokyo, ~1h 30min from Shinjuku)',
+      '~2:40PM — Arrive Narita. Return rental car at drop-off branch (allow 30-60 min)',
+      '3:30PM — Check in for WestJet WS 81. Browse duty-free: Japanese whisky, Kit-Kats, matcha products',
+      '6:30PM — Depart for Calgary. Arrive Toronto 9:15PM same day',
     ],
     food:[
-      'Last lunch in Tokyo \u2014 make it a good one',
+      'Last lunch in Tokyo — make it a good one',
       'Airport food or konbini haul for the plane',
     ],
     photo:[
       'Window seat for aerial views of Japan coastline at departure',
       'Mt Fuji from the plane if the route passes over it',
     ],
-    accom:{ name:'Flight \u2014 WS 81 + WS 646', price:0, type:'Narita 6:30PM \u2192 Calgary 12:40PM \u2192 Toronto 9:15PM' },
+    accom:{ name:'Flight — WS 81 + WS 646', price:0, type:'Narita 6:30PM → Calgary 12:40PM → Toronto 9:15PM' },
     wiki:'Narita_International_Airport'
   }
 ];
@@ -797,33 +950,33 @@ const DAYS = [
 const BOOKINGS = [
   { group:'\u26A0\uFE0F Old Bookings to Cancel / Reschedule', priority:'cancel', priorityLabel:'Action Required', items:[
     { id:'cancel_izu', text:'CANCEL: Izu Bousui Ryokan', detail:'Conf #6924487108. Was booked for Aug 6 check-in. Free cancel before Jul 29. Dates no longer work with new itinerary.', est:0 },
-    { id:'cancel_takayama', text:'DONE: Takayama Airbnb (Yado Ryokuen) \u2014 Rebooked to Aug 17-19 \u2705', detail:'Conf HMNXY258ZD. Changed from Aug 11 to Aug 17-19. CA$365.50 total. No cancellation needed.', est:0 },
-    { id:'cancel_kawaguchiko', text:'CANCEL: Kawaguchiko BIVOT 6 Airbnb', detail:'Conf HMXFSZWJXQ. Was booked for Aug 8. No longer needed \u2014 staying at Vacilando cottage instead. Free cancel before Aug 3.', est:0 },
+    { id:'cancel_takayama', text:'DONE: Takayama Airbnb (Yado Ryokuen) — Rebooked to Aug 17-19 \u2705', detail:'Conf HMNXY258ZD. Changed from Aug 11 to Aug 17-19. CA$365.50 total. No cancellation needed.', est:0 },
+    { id:'cancel_kawaguchiko', text:'CANCEL: Kawaguchiko BIVOT 6 Airbnb', detail:'Conf HMXFSZWJXQ. Was booked for Aug 8. No longer needed — staying at Vacilando cottage instead. Free cancel before Aug 3.', est:0 },
     { id:'cancel_matsumoto', text:'CANCEL: Matsumoto Hotel Buena Vista', detail:'Conf #5837635470. Was booked for Aug 9-11. Dates shifted. Free cancel before Aug 7.', est:0 },
-    { id:'rebook_car', text:'REBOOK: Car Rental \u2192 Shinjuku pickup Aug 9, Narita dropoff Aug 22', detail:'Current: Conf RC62461133091220163, Narita\u2192Narita, Aug 5-17. Need: one-way Shinjuku \u2192 Narita, Aug 9 ~9AM \u2013 Aug 22 ~2:30PM (13 days). Check Times, Nissan, Toyota, Nippon for one-way fees. Free cancel before Jul 29.', est:0 },
+    { id:'rebook_car', text:'REBOOK: Car Rental → Shinjuku pickup Aug 9, Narita dropoff Aug 22', detail:'Current: Conf RC62461133091220163, Narita→Narita, Aug 5-17. Need: one-way Shinjuku → Narita, Aug 9 ~9AM – Aug 22 ~2:30PM (13 days). Check Times, Nissan, Toyota, Nippon for one-way fees. Free cancel before Jul 29.', est:0 },
   ]},
   { group:'Flights', priority:'now', priorityLabel:'All Booked \u2705', items:[
-    { id:'b_flight_tor_tun', text:'Toronto \u2192 Paris \u2192 Tunis (Air France) \u2705', detail:'BOOKED. Jul 17. Seats 19A/19B (YYZ-CDG), 14F (CDG-TUN). CAD $3,222.01 total for both.', est:3222 },
-    { id:'b_flight_tun_tok', text:'Tunis \u2192 Cairo \u2192 Tokyo (EgyptAir) \u2705', detail:'BOOKED. Ref 854UU2. Aug 6 MS 844 Tunis 11:15\u2192Cairo 16:20. Aug 7 MS 964 Cairo 00:55\u2192Narita 18:30. 2,000 TND/person. 2 bags included.', est:1200 },
-    { id:'b_flight_tok_tor', text:'Tokyo \u2192 Calgary \u2192 Toronto (WestJet) \u2705', detail:'BOOKED. Ref OEAITS. Aug 22 WS 81 Narita 18:30\u2192Calgary 12:40, WS 646 Calgary 15:20\u2192Toronto 21:15. Seats 09A/B + 04A/B. Mahdi $1,029 / Rim $1,018 USD.', est:2047 },
+    { id:'b_flight_tor_tun', text:'Toronto → Paris → Tunis (Air France) \u2705', detail:'BOOKED. Jul 17. Seats 19A/19B (YYZ-CDG), 14F (CDG-TUN). CAD $3,222.01 total for both.', est:3222 },
+    { id:'b_flight_tun_tok', text:'Tunis → Cairo → Tokyo (EgyptAir) \u2705', detail:'BOOKED. Ref 854UU2. Aug 6 MS 844 Tunis 11:15→Cairo 16:20. Aug 7 MS 964 Cairo 00:55→Narita 18:30. 2,000 TND/person. 2 bags included.', est:1200 },
+    { id:'b_flight_tok_tor', text:'Tokyo → Calgary → Toronto (WestJet) \u2705', detail:'BOOKED. Ref OEAITS. Aug 22 WS 81 Narita 18:30→Calgary 12:40, WS 646 Calgary 15:20→Toronto 21:15. Seats 09A/B + 04A/B. Mahdi $1,029 / Rim $1,018 USD.', est:2047 },
   ]},
   { group:'Car Rental', priority:'soon', priorityLabel:'Rebook Dates', items:[
-    { id:'b_car', text:'Car Rental \u2014 Times: Haneda \u2192 Narita (13 days) \u2705', detail:'BOOKED. Res #202600770652. Aug 9 10:30AM Haneda Airport T1 \u2192 Aug 22 2:00PM Narita Airport. O-2 Class (Yaris Cross Hybrid/CX-30). Safety Package + ETC card. \xA5203,797 (~CA$1,853). Shuttle from T1 counter to Haneda store (20-40min). Return at Narita store, shuttle to terminal. Return car 3.5h before flight.', est:1853 },
+    { id:'b_car', text:'Car Rental — Times: Haneda → Narita (13 days) \u2705', detail:'BOOKED. Res #202600770652. Aug 9 10:30AM Haneda Airport T1 → Aug 22 2:00PM Narita Airport. O-2 Class (Yaris Cross Hybrid/CX-30). Safety Package + ETC card. \xA5203,797 (~CA$1,853). Shuttle from T1 counter to Haneda store (20-40min). Return at Narita store, shuttle to terminal. Return car 3.5h before flight.', est:1853 },
   ]},
-  { group:'Accommodation \u2014 Booked', priority:'now', priorityLabel:'Confirmed', items:[
-    { id:'b_accom_fuji', text:'Mt Fuji \u2014 Vacilando Cottage (Airbnb) \u2705', detail:'BOOKED. Conf HM8TNSMZ92. Aug 9 10AM \u2013 Aug 12 2PM. 3 nights. CA$1,062.12 total ($296.87 Airbnb credit + $304.51 Apple Pay paid Apr 3 + $460.74 Apple Pay charged Jul 24). Host: Yuki (Amano). Smart key entry. Must submit guest info. Free cancel before Jul 26, partial before Aug 2. Phone: +81 70-3167-4828.', est:1062 },
+  { group:'Accommodation — Booked', priority:'now', priorityLabel:'Confirmed', items:[
+    { id:'b_accom_fuji', text:'Mt Fuji — Vacilando Cottage (Airbnb) \u2705', detail:'BOOKED. Conf HM8TNSMZ92. Aug 9 10AM – Aug 12 2PM. 3 nights. CA$1,062.12 total ($296.87 Airbnb credit + $304.51 Apple Pay paid Apr 3 + $460.74 Apple Pay charged Jul 24). Host: Yuki (Amano). Smart key entry. Must submit guest info. Free cancel before Jul 26, partial before Aug 2. Phone: +81 70-3167-4828.', est:1062 },
   ]},
-  { group:'Accommodation \u2014 To Book', priority:'soon', priorityLabel:'Book 2-3 months ahead', items:[
-    { id:'b_accom_tokyo', text:'Tokyo \u2014 APA Hotel Nishishinjuku Gochome Tower (2 nights) \u2705', detail:'BOOKED. Conf #6006074195 / PIN 1355. Aug 7 3PM \u2013 Aug 9 10AM. Double Room Small Double Bed, non-smoking. CA$292.52 (pay at property in JPY \xA532,760). No breakfast. Onsen 6-10AM + 3PM-2AM. Free cancel before Aug 5 midnight.', est:293 },
-    { id:'b_accom_izu', text:'Izu / Shimoda \u2014 MAHANA Shitani Airbnb (2 nights) \u2705', detail:'PENDING confirmation. Conf HMHNC2HJMJ. Aug 12 3PM \u2013 Aug 14 11AM. Private house, free parking, kitchen, AC, washer. 10min drive to beaches. Hosted by Mai and Saki (Superhost). CA$402.75 total. Free cancel before Aug 7.', est:403 },
-    { id:'b_ryokan_hakone', text:'Hakone \u2014 Kowakien TEN-YU (1 night) \u2705', detail:'BOOKED. Expedia #73412759642251. Aug 14 3PM \u2013 Aug 15 11AM. Superior Room, private open-air bath, buffet dinner 7:30PM. CA$890.25 total (CA$887.63 paid on Amex, CA$2.62 due at property). Must check in by 4:30PM for dinner. Free cancel before Aug 11 11:59PM.', est:890 },
-    { id:'b_accom_matsumoto', text:'Matsumoto \u2014 Dormy Inn (2 nights) \u2705', detail:'BOOKED. Conf #6053078780 / PIN 6313. Aug 15 3PM \u2013 Aug 17 11AM. Double Room, non-smoking, no cleaning. CA$537.46 (charged Aug 12 to ••3210). Onsen indoor+outdoor, free ramen 9:30-11PM. Free cancel before Aug 13 11:59PM JST.', est:537 },
-    { id:'b_accom_takayama', text:'Takayama \u2014 Yado Ryokuen Airbnb (2 nights) \u2705', detail:'BOOKED. Conf HMNXY258ZD. Receipt RCRBFY3482. Aug 17 3PM \u2013 Aug 19 10AM. River view, free parking, kitchen, 2 double beds, washer. CA$365.50 total (Apple Pay). Free cancel before Aug 3, partial before Aug 10.', est:366 },
-    { id:'b_accom_karuizawa', text:'Karuizawa \u2014 Comfort Inn (1 night) \u2705', detail:'BOOKED. Conf #6428231058 / PIN 2507. Aug 19 3PM \u2013 Aug 20 10AM. Queen Room, non-smoking, free parking. CA$194.66 paid (••4716). Free cancel before Aug 16 11:59PM JST.', est:195 },
-    { id:'b_accom_tokyo2', text:'Tokyo Round 2 \u2014 Cozy Vista 302 Airbnb (2 nights) \u2705', detail:'BOOKED. Conf HMRW9F4HN2. Aug 20 3PM \u2013 Aug 22 11AM. Katsushika/Koiwa, east Tokyo. Free parking, rooftop terrace, 2BR, kitchen, washer. CA$292 (Apple Pay). ~45min drive to Narita. Host Takashi offers station pickup/dropoff. Free cancel before Aug 19.', est:292 },
+  { group:'Accommodation — To Book', priority:'soon', priorityLabel:'Book 2-3 months ahead', items:[
+    { id:'b_accom_tokyo', text:'Tokyo — APA Hotel Nishishinjuku Gochome Tower (2 nights) \u2705', detail:'BOOKED. Conf #6006074195 / PIN 1355. Aug 7 3PM – Aug 9 10AM. Double Room Small Double Bed, non-smoking. CA$292.52 (pay at property in JPY \xA532,760). No breakfast. Onsen 6-10AM + 3PM-2AM. Free cancel before Aug 5 midnight.', est:293 },
+    { id:'b_accom_izu', text:'Izu / Shimoda — MAHANA Shitani Airbnb (2 nights) \u2705', detail:'PENDING confirmation. Conf HMHNC2HJMJ. Aug 12 3PM – Aug 14 11AM. Private house, free parking, kitchen, AC, washer. 10min drive to beaches. Hosted by Mai and Saki (Superhost). CA$402.75 total. Free cancel before Aug 7.', est:403 },
+    { id:'b_ryokan_hakone', text:'Hakone — Kowakien TEN-YU (1 night) \u2705', detail:'BOOKED. Expedia #73412759642251. Aug 14 3PM – Aug 15 11AM. Superior Room, private open-air bath, buffet dinner 7:30PM. CA$890.25 total (CA$887.63 paid on Amex, CA$2.62 due at property). Must check in by 4:30PM for dinner. Free cancel before Aug 11 11:59PM.', est:890 },
+    { id:'b_accom_matsumoto', text:'Matsumoto — Dormy Inn (2 nights) \u2705', detail:'BOOKED. Conf #6053078780 / PIN 6313. Aug 15 3PM – Aug 17 11AM. Double Room, non-smoking, no cleaning. CA$537.46 (charged Aug 12 to ••3210). Onsen indoor+outdoor, free ramen 9:30-11PM. Free cancel before Aug 13 11:59PM JST.', est:537 },
+    { id:'b_accom_takayama', text:'Takayama — Yado Ryokuen Airbnb (2 nights) \u2705', detail:'BOOKED. Conf HMNXY258ZD. Receipt RCRBFY3482. Aug 17 3PM – Aug 19 10AM. River view, free parking, kitchen, 2 double beds, washer. CA$365.50 total (Apple Pay). Free cancel before Aug 3, partial before Aug 10.', est:366 },
+    { id:'b_accom_karuizawa', text:'Karuizawa — Comfort Inn (1 night) \u2705', detail:'BOOKED. Conf #6428231058 / PIN 2507. Aug 19 3PM – Aug 20 10AM. Queen Room, non-smoking, free parking. CA$194.66 paid (••4716). Free cancel before Aug 16 11:59PM JST.', est:195 },
+    { id:'b_accom_tokyo2', text:'Tokyo Round 2 — Cozy Vista 302 Airbnb (2 nights) \u2705', detail:'BOOKED. Conf HMRW9F4HN2. Aug 20 3PM – Aug 22 11AM. Katsushika/Koiwa, east Tokyo. Free parking, rooftop terrace, 2BR, kitchen, washer. CA$292 (Apple Pay). ~45min drive to Narita. Host Takashi offers station pickup/dropoff. Free cancel before Aug 19.', est:292 },
   ]},
   { group:'Advance Tickets & Reservations', priority:'soon', priorityLabel:'Book 1-2 months ahead', items:[
-    { id:'b_teamlab', text:'TeamLab Borderless tickets (Aug 8)', detail:'Azabudai Hills location. Sells out \u2014 book online well in advance.', est:40 },
+    { id:'b_teamlab', text:'TeamLab Borderless tickets (Aug 8)', detail:'Azabudai Hills location. Sells out — book online well in advance.', est:40 },
     { id:'b_shibuyasky', text:'Shibuya Sky tickets (Aug 8)', detail:'Observation deck. Book online ahead to guarantee entry.', est:20 },
     { id:'b_kamikochi_bus', text:'Kamikochi shuttle bus (Aug 16)', detail:'Alpico website. Reservations REQUIRED (since 2025). Book both directions. ~2,000 yen round trip.', est:30 },
   ]},
@@ -836,26 +989,113 @@ const BOOKINGS = [
   ]},
 ];
 
-// ─── MAP & UI ───
+// ─── MAP & UI STATE ───
 let activeDay = null;
+let currentView = 'map';
 let map, markers = [], routeLine, imageCache = {};
 
 function getDays() { return DAYS; }
 
+// ─── VIEW TOGGLE ───
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('#viewToggle button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`#viewToggle button[onclick="setView('${view}')"]`).classList.add('active');
+
+  const mapContainer = document.getElementById('map-container');
+  const calContainer = document.getElementById('calendar-container');
+
+  if (view === 'map') {
+    mapContainer.style.display = 'block';
+    calContainer.style.display = 'none';
+    map.invalidateSize();
+  } else {
+    mapContainer.style.display = 'none';
+    calContainer.style.display = 'block';
+    renderCalendar();
+  }
+}
+
+// ─── CALENDAR ───
+function renderCalendar() {
+  const container = document.getElementById('calendar-container');
+  // August 2026: starts on Saturday (day 6), 31 days
+  const startDayOfWeek = 6; // Saturday = 6
+  const daysInMonth = 31;
+
+  const dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Build lookup: date number -> DAYS entry
+  const dayMap = {};
+  DAYS.forEach(d => {
+    const dateNum = parseInt(d.date.replace(/\D+/g,' ').trim().split(' ').pop() || d.date.match(/\d+/)?.[0]);
+    // Parse from "Thu, Aug 7" format
+    const match = d.date.match(/(\d+)/);
+    if (match) dayMap[parseInt(match[1])] = d;
+  });
+
+  let cells = '';
+
+  // Header cells
+  dayHeaders.forEach(h => {
+    cells += `<div class="calendar-header-cell">${h}</div>`;
+  });
+
+  // Empty cells before Aug 1
+  for (let i = 0; i < startDayOfWeek; i++) {
+    cells += `<div class="calendar-cell empty"></div>`;
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const tripDay = dayMap[d];
+    const isTripDay = !!tripDay;
+    const isActive = isTripDay && activeDay === tripDay.day;
+    const isDimmed = !isTripDay;
+
+    if (isTripDay) {
+      const color = TYPE_COLORS[tripDay.type] || '#94a3b8';
+      const icon = DAY_ICONS[tripDay.type] || '';
+      const accomName = tripDay.accom.name.replace(/ \u2705/g, '').split(' — ')[0];
+      cells += `
+        <div class="calendar-cell trip-day ${isActive ? 'active' : ''}" style="border-color:${color}44;background:linear-gradient(135deg,${color}10,${color}06)"
+             onclick="selectDay(${tripDay.day})">
+          <div class="cal-type-dot" style="background:${color}"></div>
+          <div class="cal-date">${d}</div>
+          <div class="cal-icon">${icon}</div>
+          <div class="cal-location" style="color:${color}">${tripDay.title.replace('Drive to ','').replace('Back to ','')}</div>
+          <div class="cal-accom">${accomName}</div>
+        </div>`;
+    } else {
+      cells += `
+        <div class="calendar-cell ${isDimmed ? 'dimmed' : ''}">
+          <div class="cal-date">${d}</div>
+        </div>`;
+    }
+  }
+
+  container.innerHTML = `
+    <div class="calendar-month-title">八月 2026</div>
+    <div class="calendar-month-subtitle">AUGUST — JAPAN HONEYMOON</div>
+    <div class="calendar-grid">${cells}</div>
+  `;
+}
+
+// ─── MAP ───
 function initMap() {
   map = L.map('map', { zoomControl: false }).setView([36.0, 138.5], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
   }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
 }
 
 function getMarkerIcon(day, isActive) {
-  const color = TYPE_COLORS[day.type] || '#94a3b8';
+  const color = BASE_COLORS[day.base] || '#94a3b8';
   return L.divIcon({
     className: 'custom-marker-wrap',
     html: `<div class="custom-marker ${isActive?'active':''}" style="background:${color}">${day.day}</div>`,
-    iconSize: [28, 28], iconAnchor: [14, 14]
+    iconSize: [30, 30], iconAnchor: [15, 15]
   });
 }
 
@@ -870,7 +1110,7 @@ function renderMap() {
   days.forEach(day => {
     const marker = L.marker(day.coords, { icon: getMarkerIcon(day, activeDay === day.day) })
       .addTo(map)
-      .bindTooltip(`Day ${day.day}: ${day.title}`, { direction: 'top', offset: [0, -16] })
+      .bindTooltip(`Day ${day.day}: ${day.title}`, { direction: 'top', offset: [0, -18] })
       .on('click', () => selectDay(day.day));
     markers.push(marker);
     coords.push(day.coords);
@@ -884,7 +1124,7 @@ function renderMap() {
   }
 
   routeLine = L.polyline(lineCoords, {
-    color: '#f59e0b', weight: 3, opacity: 0.6, dashArray: '8 6'
+    color: '#f59e0b', weight: 2.5, opacity: 0.5, dashArray: '8 6'
   }).addTo(map);
 
   if (!activeDay) {
@@ -892,12 +1132,51 @@ function renderMap() {
   }
 }
 
+// ─── HEADER STATS & PROGRESS ───
+function updateHeaderStats() {
+  const days = getDays();
+  const totalAccom = days.reduce((s, d) => s + d.accom.price, 0);
+  const beachDays = days.filter(d => d.type === 'beach').length;
+  const ryokanNights = days.filter(d => d.accom.type.toLowerCase().includes('ryokan')).length;
+  const driveDays = days.filter(d => d.driving && !d.driving.includes('No driving')).length;
+
+  document.getElementById('headerStats').innerHTML = `
+    <div class="stat">&#128197; ${days.length} days / 15 nights</div>
+    <div class="stat">&#127754; ${beachDays} beach</div>
+    <div class="stat">&#128663; ${driveDays} drive days</div>
+    <div class="stat">&#128176; ~CA$${totalAccom.toLocaleString()} lodging (est.)</div>
+  `;
+
+  updateDayProgress();
+}
+
+function updateDayProgress() {
+  const el = document.getElementById('dayProgress');
+  if (!activeDay) { el.innerHTML = ''; return; }
+  const total = getDays().length;
+  const pct = Math.round((activeDay / total) * 100);
+  el.innerHTML = `
+    <div class="day-progress">
+      <span class="day-progress-text">Day ${activeDay} of ${total}</span>
+      <div class="day-progress-bar"><div class="day-progress-fill" style="width:${pct}%"></div></div>
+    </div>
+  `;
+}
+
+// ─── SIDEBAR ───
 function renderSidebar() {
   const days = getDays();
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = days.map(day => {
     const color = TYPE_COLORS[day.type] || '#94a3b8';
     const isActive = activeDay === day.day;
+    const accomText = day.accom.type;
+    const isBooked = accomText.startsWith('BOOKED');
+    const isPending = accomText.startsWith('PENDING');
+    const bookingStatus = isBooked ? 'booked' : isPending ? 'pending' : 'flight';
+    const bookingLabel = isBooked ? 'Booked' : isPending ? 'Pending' : (day.type === 'travel' ? 'Flight' : '');
+    const accomBarColor = BASE_COLORS[day.base] || color;
+
     return `
       <div class="day-card ${isActive ? 'active' : ''}" id="day-${day.day}" onclick="selectDay(${day.day})">
         <div class="day-card-header">
@@ -918,29 +1197,31 @@ function renderSidebar() {
 
             ${day.drives ? `
             <div class="detail-section drives">
-              <div class="detail-section-title">&#128663; Drives</div>
+              <div class="detail-section-title"><span class="section-icon" style="background:${TYPE_COLORS.travel}22">&#128663;</span> Drives</div>
               <ul>${day.drives.map(d => `<li>${d}</li>`).join('')}</ul>
             </div>` : ''}
 
             <div class="detail-section">
-              <div class="detail-section-title">Activities</div>
+              <div class="detail-section-title"><span class="section-icon" style="background:${color}22">&#127919;</span> Activities</div>
               <ul>${day.activities.map(a => `<li>${a}</li>`).join('')}</ul>
             </div>
             <div class="detail-section food">
-              <div class="detail-section-title">Food</div>
+              <div class="detail-section-title"><span class="section-icon" style="background:${TYPE_COLORS.cultural}22">&#127833;</span> Food</div>
               <ul>${day.food.map(f => `<li>${f}</li>`).join('')}</ul>
             </div>
             <div class="detail-section photo">
-              <div class="detail-section-title">Photo Spots (X-H2S)</div>
+              <div class="detail-section-title"><span class="section-icon" style="background:${TYPE_COLORS.city}22">&#128247;</span> Photo Spots (X-H2S)</div>
               <ul>${day.photo.map(p => `<li>${p}</li>`).join('')}</ul>
             </div>
 
-            <div class="detail-accommodation">
-              <div>
+            <div class="detail-accommodation" style="--accom-color:${accomBarColor}">
+              <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${accomBarColor};border-radius:${parseInt(getComputedStyle(document.documentElement).getPropertyValue('--radius'))}px ${parseInt(getComputedStyle(document.documentElement).getPropertyValue('--radius'))}px 0 0"></div>
+              ${bookingLabel ? `<span class="booking-badge ${bookingStatus}">${bookingLabel}</span>` : ''}
+              <div class="accom-header">
                 <div class="name">${day.accom.name}</div>
-                <div class="accom-type">${day.accom.type}</div>
+                <div class="price">${day.accom.price > 0 ? 'CA$' + day.accom.price : day.accom.name.includes('\u2705') ? '\u2705' : '\u2014'}</div>
               </div>
-              <div class="price">${day.accom.price > 0 ? 'CA$' + day.accom.price : day.accom.name.includes('\u2705') ? '\u2705' : '\u2014'}</div>
+              <div class="accom-type">${day.accom.type}</div>
             </div>
 
             <div class="detail-links">
@@ -963,6 +1244,7 @@ function selectDay(dayNum) {
 
   renderSidebar();
   renderMap();
+  if (currentView === 'calendar') renderCalendar();
 
   if (activeDay) {
     const day = getDays().find(d => d.day === dayNum);
@@ -996,21 +1278,6 @@ function setImage(dayNum, url) {
   const placeholder = container.querySelector('.img-placeholder');
   if (placeholder) placeholder.style.display = 'none';
   container.appendChild(img);
-}
-
-function updateHeaderStats() {
-  const days = getDays();
-  const totalAccom = days.reduce((s, d) => s + d.accom.price, 0);
-  const beachDays = days.filter(d => d.type === 'beach').length;
-  const ryokanNights = days.filter(d => d.accom.type.toLowerCase().includes('ryokan')).length;
-  const driveDays = days.filter(d => d.driving && !d.driving.includes('No driving')).length;
-
-  document.getElementById('headerStats').innerHTML = `
-    <div class="stat">&#128197; ${days.length} days / 15 nights</div>
-    <div class="stat">&#127754; ${beachDays} beach</div>
-    <div class="stat">&#128663; ${driveDays} drive days</div>
-    <div class="stat">&#128176; ~CA$${totalAccom.toLocaleString()} lodging (est.)</div>
-  `;
 }
 
 // ─── MODALS ───
@@ -1065,7 +1332,7 @@ function renderBudget() {
       </tbody>
     </table>
     <p style="margin-top:16px;font-size:12px;color:var(--muted)">Using 1 CAD \u2248 110 JPY. Actual costs will vary. Flight costs are final (booked). Accommodation estimates will update as we book.</p>
-    <button onclick="closeModals()" style="margin-top:16px;padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
+    <button class="modal-close-btn" onclick="closeModals()">Close</button>
   `;
 }
 
@@ -1137,9 +1404,9 @@ function renderBookings() {
       </div>
     `).join('')}
 
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="closeModals()" style="padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
-      <button onclick="exportBookings()" style="padding:10px 20px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:500;font-size:12px">Copy Summary</button>
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="modal-close-btn" onclick="closeModals()">Close</button>
+      <button onclick="exportBookings()" style="padding:10px 20px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-weight:500;font-size:12px;font-family:var(--font-body);transition:all 0.2s">Copy Summary</button>
     </div>
   `;
 }
@@ -1218,7 +1485,7 @@ function renderChecklist() {
         `).join('')}
       </div>
     `).join('')}
-    <button onclick="closeModals()" style="margin-top:16px;padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Close</button>
+    <button class="modal-close-btn" onclick="closeModals()">Close</button>
   `;
 }
 
