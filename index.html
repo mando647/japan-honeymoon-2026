@@ -332,19 +332,21 @@ const DAYS = [
     wiki:'Shinjuku'
   },
   {
-    day:3, date:'Sat, Aug 9', title:'Pick Up Car + Drive to Fuji', subtitle:'Shinjuku \u2192 Vacilando Cottage', coords:[35.511,138.763], type:'scenic',
-    driving:'Pick up car in Shinjuku, drive to Kawaguchiko: ~1h 25min', temp:'29\u00B0C (lake elevation)',
+    day:3, date:'Sat, Aug 9', title:'Pick Up Car + Drive to Fuji', subtitle:'Haneda \u2192 Vacilando Cottage', coords:[35.511,138.763], type:'scenic',
+    driving:'Train to Haneda, pick up car, drive to Kawaguchiko: ~1h 45min', temp:'29\u00B0C (lake elevation)',
     drives:[
-      'Pick up rental car at Shinjuku branch (Times, Nissan, Toyota, or Nippon). Book one-way: Tokyo pickup \u2192 Narita dropoff.',
-      'Shinjuku \u2192 Kawaguchiko: ~1h 25min (105km via Chuo Expressway). Weekend traffic can add 30-60min.',
+      'Hotel \u2192 Haneda Airport T1: ~30-40 min by train (Oedo line to Daimon, then monorail)',
+      'Haneda T1 counter \u2192 Times Haneda store: shuttle bus 20-40 min. Res #202600770652.',
+      'Haneda \u2192 Kawaguchiko: ~1h 45min (100km, straight onto expressway)',
       'Kawaguchiko \u2192 Chureito Pagoda: ~10-15 min (10km)',
       'Chureito Pagoda \u2192 Vacilando Cottage: ~15 min',
     ],
     activities:[
       '7:00AM \u2014 Any Tokyo spots you missed: Akihabara, Ueno Park, or Yanaka old-town vibes',
-      '9:00AM \u2014 Pick up rental car at Shinjuku branch. Have IDP + passport + reservation ready',
-      '9:30AM \u2014 Depart Tokyo for Kawaguchiko',
-      '~11:00AM \u2014 Arrive Kawaguchiko area',
+      '9:00AM \u2014 Train to Haneda Airport T1 (~30-40 min). Go to Times counter, shuttle to store (20-40 min)',
+      '10:30AM \u2014 Pick up car at Times Haneda. Have IDP + passport + booking ref 202600770652 ready',
+      '~10:45AM \u2014 Depart Haneda for Kawaguchiko (~1h 45min)',
+      '~12:30PM \u2014 Arrive Kawaguchiko area',
       '1:00PM \u2014 Check into Vacilando Cottage (check-in from 10AM)',
       '1:30PM \u2014 Lunch: Houtou Fudou \u2014 Yamanashi\'s signature hoto noodles (thick flat noodles in miso-pumpkin broth)',
       '3:00PM \u2014 Chureito Pagoda \u2014 398 steps up. Mt Fuji framed behind the iconic pagoda. Free parking at base. 1-1.5h',
@@ -762,11 +764,11 @@ const DAYS = [
   },
   {
     day:16, date:'Fri, Aug 22', title:'Fly Home', subtitle:'Tokyo \u2192 Narita \u2192 Calgary \u2192 Toronto', coords:[35.772,140.393], type:'travel',
-    driving:'Tokyo \u2192 Narita Airport: ~1h 10min (expressway)', temp:'\u2014',
+    driving:'Tokyo (Katsushika) \u2192 Narita Airport: ~45 min', temp:'\u2014',
     drives:[
-      'Tokyo \u2192 Narita Airport: ~1h 10min (73km via Higashikanto Expressway). From Shinjuku: ~1h 30min.',
-      'Return car at Times Narita. Allow 30-60 min for inspection.',
-      'Flight is 6:30PM \u2014 aim to arrive airport by 3PM. Leave Tokyo by 1:30PM latest.',
+      'Cozy Vista (Katsushika) \u2192 Times Narita store: ~45 min (east Tokyo = close to Narita)',
+      'Return car by 2:00PM. Times shuttle to Narita terminal.',
+      'Flight is 6:30PM \u2014 Times says return 3.5h before international flight = by 3:00PM. You\u2019re returning at 2:00PM so plenty of buffer.',
     ],
     activities:[
       '9:00AM \u2014 Sleep in. Relaxed morning',
@@ -806,7 +808,7 @@ const BOOKINGS = [
     { id:'b_flight_tok_tor', text:'Tokyo \u2192 Calgary \u2192 Toronto (WestJet) \u2705', detail:'BOOKED. Ref OEAITS. Aug 22 WS 81 Narita 18:30\u2192Calgary 12:40, WS 646 Calgary 15:20\u2192Toronto 21:15. Seats 09A/B + 04A/B. Mahdi $1,029 / Rim $1,018 USD.', est:2047 },
   ]},
   { group:'Car Rental', priority:'soon', priorityLabel:'Rebook Dates', items:[
-    { id:'b_car', text:'Car Rental \u2014 One-way: Shinjuku \u2192 Narita (13 days)', detail:'Cancel current booking (Conf RC62461133091220163). Rebook: Shinjuku pickup Aug 9 ~9AM, Narita dropoff Aug 22 ~2:30PM. Check Times, Nissan, Toyota, Nippon for best one-way rate. Saves 2 days rental + Tokyo parking.', est:1400 },
+    { id:'b_car', text:'Car Rental \u2014 Times: Haneda \u2192 Narita (13 days) \u2705', detail:'BOOKED. Res #202600770652. Aug 9 10:30AM Haneda Airport T1 \u2192 Aug 22 2:00PM Narita Airport. O-2 Class (Yaris Cross Hybrid/CX-30). Safety Package + ETC card. \xA5203,797 (~CA$1,853). Shuttle from T1 counter to Haneda store (20-40min). Return at Narita store, shuttle to terminal. Return car 3.5h before flight.', est:1853 },
   ]},
   { group:'Accommodation \u2014 Booked', priority:'now', priorityLabel:'Confirmed', items:[
     { id:'b_accom_fuji', text:'Mt Fuji \u2014 Vacilando Cottage (Airbnb) \u2705', detail:'BOOKED. Conf HM8TNSMZ92. Aug 9 10AM \u2013 Aug 12 2PM. 3 nights. CA$1,062.12 total ($296.87 Airbnb credit + $304.51 Apple Pay paid Apr 3 + $460.74 Apple Pay charged Jul 24). Host: Yuki (Amano). Smart key entry. Must submit guest info. Free cancel before Jul 26, partial before Aug 2. Phone: +81 70-3167-4828.', est:1062 },
@@ -1028,7 +1030,7 @@ function renderBudget() {
     ['Flights \u2014 Toronto \u2192 Tunis (2 ppl)', 'Air France via Paris. Jul 17.', 3222],
     ['Flights \u2014 Tunis \u2192 Tokyo (2 ppl)', 'EgyptAir via Cairo. Aug 6-7. 2,000 TND/pp.', 1200],
     ['Flights \u2014 Tokyo \u2192 Toronto (2 ppl)', 'WestJet via Calgary. Aug 22. $2,047 USD (~CA$2,825 @ 1.38).', 2825],
-    ['Car Rental (13 days)', 'One-way: Shinjuku pickup Aug 9 \u2192 Narita dropoff Aug 22. + CDW/NOC + one-way fee', 1400],
+    ['Car Rental (13 days)', 'Times: Haneda T1 pickup Aug 9 \u2192 Narita dropoff Aug 22. O-2 Class + Safety Pkg + ETC. \xA5203,797', 1853],
     ['Expressway Tolls', 'ETC card, mixed express/free roads. East/central loop only.', 400],
     ['Gas (~2,500km)', '~125L at 170 yen/L', 180],
     ['Narita Express (arrival)', '2 people, Narita \u2192 Shinjuku', 50],
